@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 import DocumentPrint from '@/components/shared/DocumentPrint.vue';
-import { printElement, rememberPaper, savedPaper, type Paper } from '@/utils/print';
+import { downloadPdf, printElement, rememberPaper, savedPaper, type Paper } from '@/utils/print';
 
 const props = withDefaults(defineProps<{
   modelValue: boolean;
@@ -20,6 +20,7 @@ const emit = defineEmits<{
 
 const paper = ref<Paper>(savedPaper());
 const sheet = ref<HTMLElement | null>(null);
+const downloading = ref(false);
 
 function number() {
   if (props.kind === 'quotation') return props.doc?.quotation_number;
@@ -35,6 +36,20 @@ function choose(value: Paper) {
 function print() {
   const element = sheet.value?.firstElementChild as HTMLElement | null;
   if (element) printElement(element, paper.value, number());
+}
+
+async function download() {
+  const wasPaper = paper.value;
+  paper.value = 'a4';
+  await nextTick();
+  downloading.value = true;
+  try {
+    const element = sheet.value?.firstElementChild as HTMLElement | null;
+    if (element) await downloadPdf(element, number() || 'document');
+  } finally {
+    downloading.value = false;
+    paper.value = wasPaper;
+  }
 }
 
 watch(() => props.modelValue, (open) => {
@@ -65,6 +80,7 @@ watch(() => props.modelValue, (open) => {
         </v-btn-toggle>
         <v-spacer />
         <slot name="actions" />
+        <v-btn variant="outlined" color="primary" prepend-icon="mdi-file-pdf-box" :loading="downloading" class="text-none" @click="download">Download PDF</v-btn>
         <v-btn color="primary" variant="flat" prepend-icon="mdi-printer" @click="print">Print</v-btn>
       </div>
       <v-card-text class="print-dialog__preview">

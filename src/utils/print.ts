@@ -48,3 +48,45 @@ export function printElement(element: HTMLElement, paper: Paper, title = 'Print'
         frame.onload = () => setTimeout(trigger, 300);
     }
 }
+
+export async function downloadPdf(element: HTMLElement, fileName = 'document') {
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+    ]);
+    const canvas = await html2canvas(element, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+    });
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const margin = 8;
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const printWidth = pageWidth - margin * 2;
+    const printHeight = (canvas.height * printWidth) / canvas.width;
+    const usable = pageHeight - margin * 2;
+    const image = canvas.toDataURL('image/jpeg', 0.95);
+
+    // a sheet that is only a little taller than the page is shrunk to fit rather than split
+    if (printHeight <= usable * 1.12) {
+        const height = Math.min(printHeight, usable);
+        const width = (printWidth * height) / printHeight;
+        pdf.addImage(image, 'JPEG', (pageWidth - width) / 2, margin, width, height);
+        pdf.save(`${fileName}.pdf`);
+        return;
+    }
+
+    let leftToPrint = printHeight;
+    let position = margin;
+    pdf.addImage(image, 'JPEG', margin, position, printWidth, printHeight);
+    leftToPrint -= usable;
+    while (leftToPrint > 0) {
+        position -= usable;
+        pdf.addPage();
+        pdf.addImage(image, 'JPEG', margin, position, printWidth, printHeight);
+        leftToPrint -= usable;
+    }
+    pdf.save(`${fileName}.pdf`);
+}
