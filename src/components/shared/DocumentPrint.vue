@@ -8,6 +8,7 @@ const props = defineProps<{
   doc: any;
   kind: 'bill' | 'quotation' | 'return';
   paper: Paper;
+  brands?: any[];
 }>();
 
 const isQuotation = computed(() => props.kind === 'quotation');
@@ -16,6 +17,17 @@ const currency = computed(() => props.doc?.vendor?.country?.currency_symbol || '
 const number = computed(() => (isQuotation.value ? props.doc.quotation_number : props.doc.bill_number));
 const person = computed(() => (isQuotation.value ? props.doc.created_by_user?.full_name : props.doc.cashier?.full_name));
 const party = computed(() => [props.doc.customer_name, props.doc.customer_phone].filter(Boolean).join(' · ') || 'Walk-in customer');
+const shopName = computed(() => props.doc?.clientstore?.store_name || props.doc?.vendor?.business_name || '');
+const shopLogo = computed(() => props.doc?.clientstore?.image_url || '');
+const brandLogos = computed(() => {
+  const active = (props.brands || []).filter((brand: any) => brand.is_active !== false);
+  // the ones with a logo look best on paper, so they come first
+  return [...active].sort((a: any, b: any) => Number(!!b.image_url) - Number(!!a.image_url)).slice(0, 5);
+});
+const phones = computed(() => {
+  const shop = props.doc?.clientstore || {};
+  return [shop.store_phone, ...(shop.store_phones || [])].map((value: any) => String(value || '').trim()).filter(Boolean);
+});
 
 function amount(value?: number | string | null) {
   return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -25,9 +37,8 @@ function amount(value?: number | string | null) {
 <template>
   <div v-if="kind === 'return' && paper === '80mm'" class="print-sheet print-receipt">
     <div class="text-center">
-      <div class="print-receipt__title">{{ doc.vendor?.business_name }}</div>
-      <div>{{ doc.clientstore?.store_name }}</div>
-      <div v-if="doc.clientstore?.store_phone">Tel: {{ doc.clientstore.store_phone }}</div>
+      <div class="print-receipt__title">{{ shopName }}</div>
+      <div v-if="phones.length">Tel: {{ phones.join(' · ') }}</div>
     </div>
     <div class="print-receipt__line" />
     <div class="print-receipt__heading">RETURN SLIP</div>
@@ -52,17 +63,18 @@ function amount(value?: number | string | null) {
     <div class="print-receipt__row"><span>Refunded by</span><span>{{ doc.refund_method }}</span></div>
     <div class="print-receipt__line" />
     <div class="text-center">Reason: {{ doc.reason }}</div>
+    <div class="print-receipt__credit">Software developed by Ziyaan Technologies<br />03172532083</div>
   </div>
 
   <div v-else-if="kind === 'return'" class="print-sheet print-a4">
     <div class="print-a4__head">
-      <div>
-        <div class="print-a4__business">{{ doc.vendor?.business_name }}</div>
-        <div class="print-a4__muted">{{ doc.clientstore?.store_name }}</div>
+      <div class="print-a4__identity">
+        <div class="print-a4__business">{{ shopName }}</div>
         <div v-if="doc.clientstore?.address" class="print-a4__muted">{{ doc.clientstore.address }}</div>
-        <div v-if="doc.clientstore?.store_phone" class="print-a4__muted">Tel: {{ doc.clientstore.store_phone }}</div>
+        <div v-if="phones.length" class="print-a4__muted">Tel: {{ phones.join(' · ') }}</div>
       </div>
-      <div class="text-right">
+      <img v-if="shopLogo" :src="shopLogo" :alt="shopName" class="print-a4__logo" crossorigin="anonymous" />
+      <div class="print-a4__aside text-right">
         <div class="print-a4__title print-a4__title--return">RETURN SLIP</div>
         <div class="print-a4__number">{{ doc.return_number }}</div>
       </div>
@@ -106,14 +118,24 @@ function amount(value?: number | string | null) {
         <div class="print-a4__pair"><span>Refunded by</span><span>{{ doc.refund_method }}</span></div>
       </div>
     </div>
+
+    <div v-if="brandLogos.length" class="print-a4__brands">
+      <div class="print-a4__brands-label">We deal in</div>
+      <div class="print-a4__brands-row">
+        <template v-for="brand in brandLogos" :key="brand.id">
+          <img v-if="brand.image_url" :src="brand.image_url" :alt="brand.name" crossorigin="anonymous" />
+          <span v-else class="print-a4__brand-name">{{ brand.name }}</span>
+        </template>
+      </div>
+    </div>
+    <div class="print-a4__credit">Software developed by Ziyaan Technologies · 03172532083</div>
   </div>
 
   <div v-else-if="paper === '80mm'" class="print-sheet print-receipt">
     <div class="text-center">
-      <div class="print-receipt__title">{{ doc.vendor?.business_name }}</div>
-      <div>{{ doc.clientstore?.store_name }}</div>
+      <div class="print-receipt__title">{{ shopName }}</div>
       <div v-if="doc.clientstore?.address">{{ doc.clientstore.address }}</div>
-      <div v-if="doc.clientstore?.store_phone">Tel: {{ doc.clientstore.store_phone }}</div>
+      <div v-if="phones.length">Tel: {{ phones.join(' · ') }}</div>
     </div>
     <div class="print-receipt__line" />
     <div class="print-receipt__heading">{{ isQuotation ? 'QUOTATION' : 'SALES BILL' }}</div>
@@ -154,24 +176,29 @@ function amount(value?: number | string | null) {
     <div class="print-receipt__row print-receipt__total"><span>{{ isQuotation ? 'TOTAL' : 'NET TOTAL' }}</span><span>{{ currency }} {{ amount(doc.total_amount) }}</span></div>
     <template v-if="!isQuotation">
       <div class="print-receipt__line" />
-      <div class="print-receipt__row"><span>{{ doc.payment_method === 'Cash' ? 'Cash Received' : `Paid by ${doc.payment_method}` }}</span><span>{{ amount(doc.amount_received) }}</span></div>
-      <div v-if="doc.payment_method === 'Cash'" class="print-receipt__row font-weight-bold"><span>Change</span><span>{{ amount(doc.change_amount) }}</span></div>
+      <div class="print-receipt__row"><span>{{ doc.khata_amount > 0 ? 'Paid Now' : (doc.payment_method === 'Cash' ? 'Cash Received' : `Paid by ${doc.payment_method}`) }}</span><span>{{ amount(doc.amount_received) }}</span></div>
+      <div v-if="doc.payment_method === 'Cash' && !(doc.khata_amount > 0)" class="print-receipt__row font-weight-bold"><span>Change</span><span>{{ amount(doc.change_amount) }}</span></div>
+      <template v-if="doc.khata_amount > 0">
+        <div class="print-receipt__row print-receipt__total"><span>REMAINING</span><span>{{ currency }} {{ amount(doc.khata_amount) }}</span></div>
+        <div v-if="doc.due_date" class="print-receipt__row"><span>To be paid by</span><span>{{ formatDate(doc.due_date) }}</span></div>
+      </template>
       <div v-if="doc.refunded_amount > 0" class="print-receipt__row font-weight-bold"><span>Refunded</span><span>-{{ amount(doc.refunded_amount) }}</span></div>
     </template>
     <div class="print-receipt__line" />
     <div v-if="doc.note" class="text-center">{{ doc.note }}</div>
     <div class="text-center">{{ isQuotation ? 'Prices are valid until the date above.' : 'Thank you for your business!' }}</div>
+    <div class="print-receipt__credit">Software developed by Ziyaan Technologies<br />03172532083</div>
   </div>
 
   <div v-else class="print-sheet print-a4">
     <div class="print-a4__head">
-      <div>
-        <div class="print-a4__business">{{ doc.vendor?.business_name }}</div>
-        <div class="print-a4__muted">{{ doc.clientstore?.store_name }}</div>
+      <div class="print-a4__identity">
+        <div class="print-a4__business">{{ shopName }}</div>
         <div v-if="doc.clientstore?.address" class="print-a4__muted">{{ doc.clientstore.address }}</div>
-        <div v-if="doc.clientstore?.store_phone" class="print-a4__muted">Tel: {{ doc.clientstore.store_phone }}</div>
+        <div v-if="phones.length" class="print-a4__muted">Tel: {{ phones.join(' · ') }}</div>
       </div>
-      <div class="text-right">
+      <img v-if="shopLogo" :src="shopLogo" :alt="shopName" class="print-a4__logo" crossorigin="anonymous" />
+      <div class="print-a4__aside text-right">
         <div class="print-a4__title">{{ isQuotation ? 'QUOTATION' : 'INVOICE' }}</div>
         <div class="print-a4__number">{{ number }}</div>
       </div>
@@ -238,8 +265,12 @@ function amount(value?: number | string | null) {
         </template>
         <div class="print-a4__pair print-a4__grand"><span>Total</span><span>{{ currency }} {{ amount(doc.total_amount) }}</span></div>
         <template v-if="!isQuotation">
-          <div class="print-a4__pair"><span>{{ doc.payment_method === 'Cash' ? 'Cash received' : `Paid by ${doc.payment_method}` }}</span><span>{{ amount(doc.amount_received) }}</span></div>
-          <div v-if="doc.payment_method === 'Cash'" class="print-a4__pair"><span>Change</span><span>{{ amount(doc.change_amount) }}</span></div>
+          <div class="print-a4__pair"><span>{{ doc.khata_amount > 0 ? 'Paid now' : (doc.payment_method === 'Cash' ? 'Cash received' : `Paid by ${doc.payment_method}`) }}</span><span>{{ amount(doc.amount_received) }}</span></div>
+          <div v-if="doc.payment_method === 'Cash' && !(doc.khata_amount > 0)" class="print-a4__pair"><span>Change</span><span>{{ amount(doc.change_amount) }}</span></div>
+          <template v-if="doc.khata_amount > 0">
+            <div class="print-a4__pair print-a4__due"><span>Remaining balance</span><span>{{ currency }} {{ amount(doc.khata_amount) }}</span></div>
+            <div v-if="doc.due_date" class="print-a4__pair"><span>To be paid by</span><span>{{ formatDate(doc.due_date) }}</span></div>
+          </template>
           <template v-if="doc.refunded_amount > 0">
             <div class="print-a4__pair print-a4__returned"><span>Refunded</span><span>-{{ amount(doc.refunded_amount) }}</span></div>
             <div class="print-a4__pair font-weight-bold"><span>Net after returns</span><span>{{ amount(doc.total_amount - doc.refunded_amount) }}</span></div>
@@ -247,6 +278,17 @@ function amount(value?: number | string | null) {
         </template>
       </div>
     </div>
+
+    <div v-if="brandLogos.length" class="print-a4__brands">
+      <div class="print-a4__brands-label">We deal in</div>
+      <div class="print-a4__brands-row">
+        <template v-for="brand in brandLogos" :key="brand.id">
+          <img v-if="brand.image_url" :src="brand.image_url" :alt="brand.name" crossorigin="anonymous" />
+          <span v-else class="print-a4__brand-name">{{ brand.name }}</span>
+        </template>
+      </div>
+    </div>
+    <div class="print-a4__credit">Software developed by Ziyaan Technologies · 03172532083</div>
   </div>
 </template>
 
@@ -338,10 +380,93 @@ function amount(value?: number | string | null) {
   border-bottom: 3px solid #1565c0;
 }
 
+.print-a4__head {
+  align-items: center;
+}
+
+.print-a4__identity {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.print-a4__aside {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.print-a4__logo {
+  width: 108px;
+  height: 108px;
+  object-fit: contain;
+  margin: 0 14px;
+  flex-shrink: 0;
+}
+
 .print-a4__business {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: #0f3460;
+}
+
+.print-a4__brands {
+  margin-top: 22px;
+  padding-top: 12px;
+  border-top: 1px solid #dfe6ef;
+}
+
+.print-a4__brands-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a97a8;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.print-a4__brands-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+}
+
+.print-a4__brands-row img {
+  height: 26px;
+  max-width: 96px;
+  object-fit: contain;
+}
+
+.print-a4__brand-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #4a5a6d;
+  padding: 4px 9px;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+}
+
+.print-a4__due {
+  font-weight: 700;
+  color: #c62828;
+}
+
+.print-a4__credit {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid #eef2f7;
+  text-align: center;
+  font-size: 10px;
+  color: #9aa7b6;
+}
+
+.print-receipt__credit {
+  margin-top: 10px;
+  padding-top: 6px;
+  border-top: 1px dashed #bbb;
+  text-align: center;
+  font-size: 9px;
+  line-height: 1.4;
 }
 
 .print-a4__title {

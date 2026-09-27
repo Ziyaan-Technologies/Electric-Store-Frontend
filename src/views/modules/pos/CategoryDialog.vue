@@ -35,7 +35,7 @@ const shown = computed(() => {
     .filter((product) => brandFilter.value === null || (brandFilter.value === 0 ? !product.brand_id : product.brand_id === brandFilter.value))
     .map((product) => ({
       ...product,
-      variants: product.variants.filter((variant: any) => !term || `${product.name} ${product.number || ''} ${variant.name} ${variant.sku}`.toLowerCase().includes(term)),
+      variants: product.variants.filter((variant: any) => !term || `${product.name} ${product.number || ''} ${variant.name} ${variant.barcode || ''}`.toLowerCase().includes(term)),
     }))
     .filter((product) => product.variants.length);
 });
@@ -106,7 +106,7 @@ watch(() => props.modelValue, (open) => {
           <v-chip v-if="hasUnbranded" :color="brandFilter === 0 ? 'primary' : undefined" :variant="brandFilter === 0 ? 'flat' : 'outlined'" @click="brandFilter = 0">No brand</v-chip>
         </div>
         <div class="category-dialog__search">
-          <v-text-field v-model="search" prepend-inner-icon="mdi-magnify" placeholder="Find size, model, SKU..." hide-details clearable density="compact" />
+          <v-text-field v-model="search" prepend-inner-icon="mdi-magnify" placeholder="Find size, model, barcode..." hide-details clearable density="compact" />
         </div>
       </div>
 
@@ -128,12 +128,11 @@ watch(() => props.modelValue, (open) => {
           </div>
           <div class="variant-grid">
             <div class="variant-grid__row variant-grid__row--head">
-              <span>Size / Rating</span><span>SKU</span><span class="text-right">Price</span><span class="text-right">In stock</span><span class="text-center">Qty</span>
+              <span>Size / Rating</span><span class="text-right">Price</span><span class="text-right">In stock</span><span class="text-center">Qty</span>
             </div>
             <div v-for="variant in product.variants" :key="variant.id" class="variant-grid__row"
               :class="{ 'variant-grid__row--picked': (quantities[variant.id] || 0) > 0, 'variant-grid__row--out': !available(variant) }">
               <span class="font-weight-semibold">{{ variant.name }}</span>
-              <span class="text-caption text-lightText">{{ variant.sku }}</span>
               <span class="text-right font-weight-bold">{{ formatMoney(variant.sale_price) }}</span>
               <span class="text-right" :class="variant.stock <= variant.reorder_level ? 'text-error font-weight-bold' : ''">
                 {{ formatNumber(available(variant), 3) }}<span v-if="inCart[variant.id]" class="text-caption text-lightText"> ({{ inCart[variant.id] }} on bill)</span>
@@ -230,7 +229,7 @@ watch(() => props.modelValue, (open) => {
 
 .variant-grid__row {
   display: grid;
-  grid-template-columns: minmax(140px, 1.6fr) minmax(90px, 1fr) 110px 120px 130px;
+  grid-template-columns: minmax(140px, 2fr) 110px 120px 130px;
   align-items: center;
   gap: 8px;
   padding: 7px 14px;
@@ -292,8 +291,7 @@ watch(() => props.modelValue, (open) => {
     grid-template-columns: 1fr 90px 120px;
   }
 
-  .variant-grid__row > :nth-child(2),
-  .variant-grid__row > :nth-child(4) {
+  .variant-grid__row > :nth-child(3) {
     display: none;
   }
 }

@@ -57,7 +57,7 @@ watch(() => props.modelValue, (open) => {
       <v-card-text class="ui-modal__body">
         <v-alert v-model="alerts.showErrorAlert.value" :text="alerts.errorText.value" type="error" density="compact" class="mb-4 single-line-alert" closable />
 
-        <v-select v-model="variantId" :items="[{ value: null, title: 'All sizes' }, ...(product?.variants || []).map((v: any) => ({ value: v.id, title: `${v.name} · ${v.sku}` }))]"
+        <v-select v-model="variantId" :items="[{ value: null, title: 'All sizes' }, ...(product?.variants || []).map((v: any) => ({ value: v.id, title: v.name }))]"
           hide-details class="mb-4 bold-field" @update:model-value="load" />
 
         <v-skeleton-loader v-if="loading" type="table-row@6" />
@@ -88,8 +88,8 @@ watch(() => props.modelValue, (open) => {
             <tbody>
               <tr v-for="row in data.rows" :key="row.id">
                 <td>
-                  <v-chip size="small" variant="tonal" :color="row.kind === 'In' ? 'success' : 'primary'">
-                    {{ row.kind === 'In' ? 'Came in' : 'Sold' }}
+                  <v-chip size="small" variant="tonal" :color="row.kind === 'Out' ? 'primary' : row.kind === 'Correction' ? 'warning' : 'success'">
+                    {{ row.kind === 'Out' ? 'Sold' : row.kind === 'Correction' ? 'Cost changed' : 'Came in' }}
                   </v-chip>
                 </td>
                 <td class="text-no-wrap">{{ formatDateTime(row.created_at) }}</td>
@@ -101,12 +101,12 @@ watch(() => props.modelValue, (open) => {
                 <td class="text-right">{{ formatMoney(row.price) }}</td>
                 <td class="text-right">{{ formatMoney(row.amount) }}</td>
                 <td class="text-right">
-                  <span v-if="row.kind === 'In'" class="text-lightText">-</span>
+                  <span v-if="row.kind !== 'Out'" class="text-lightText">-</span>
                   <span v-else-if="row.profit === null" class="text-warning">Cost pending</span>
                   <span v-else class="font-weight-bold" :class="row.profit >= 0 ? 'text-success' : 'text-error'">{{ formatMoney(row.profit) }}</span>
                 </td>
                 <td>
-                  <template v-if="row.kind === 'In'">
+                  <template v-if="row.kind !== 'Out'">
                     <div class="text-caption">Stock {{ formatNumber(row.stock_after, 3) }} · cost {{ formatMoney(row.cost_after) }}</div>
                     <div v-if="row.supplier || row.note" class="text-caption text-lightText">{{ [row.supplier, row.note].filter(Boolean).join(' · ') }}</div>
                     <div v-if="row.by" class="text-caption text-lightText">by {{ row.by }}</div>

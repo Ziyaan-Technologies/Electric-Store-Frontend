@@ -30,6 +30,7 @@ export const useMenuStore = defineStore('menu', () => {
           items: [
             { title: 'My Shops', icon: 'mdi-storefront-outline', to: '/shops', action: 'shops_view', subject: 'Shops' },
             { title: 'Debtors', icon: 'mdi-account-cash-outline', to: '/debtors', action: 'debtors_view', subject: 'Debtors' },
+            { title: 'Creditors', icon: 'mdi-account-arrow-left-outline', to: '/creditors', action: 'creditors_view', subject: 'Creditors' },
             { title: 'Users', icon: 'mdi-account-key-outline', to: '/users', action: 'users_view', subject: 'Users' },
             { title: 'Roles', icon: 'mdi-shield-account-outline', to: '/roles', action: 'roles_view', subject: 'Roles' },
           ],
@@ -47,12 +48,14 @@ export const useMenuStore = defineStore('menu', () => {
           { title: 'Quotations', icon: 'mdi-file-document-edit-outline', to: '/quotations', action: 'quotations_view', subject: 'Quotation' },
           { title: 'Pending Costs', icon: 'mdi-clock-alert-outline', to: '/pending-costs', action: 'pending_costs_view', subject: 'Pending Cost' },
           { title: 'Debtors', icon: 'mdi-account-cash-outline', to: '/debtors', action: 'debtors_view', subject: 'Debtors' },
+          { title: 'Creditors', icon: 'mdi-account-arrow-left-outline', to: '/creditors', action: 'creditors_view', subject: 'Creditors' },
         ],
       },
       {
         title: 'Counters',
         items: [
           { title: 'Counters', icon: 'mdi-counter', to: '/counters', action: 'counters_view', subject: 'Counter' },
+          { title: 'Expenses', icon: 'mdi-cash-minus', to: '/expenses', action: 'expenses_view', subject: 'Expenses' },
         ],
       },
       {

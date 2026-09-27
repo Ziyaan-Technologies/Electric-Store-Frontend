@@ -41,7 +41,6 @@ export interface CartLine {
     product_variant_id: number;
     product_name: string;
     variant_name: string;
-    sku: string;
     barcode?: string | null;
     image_url?: string | null;
     unit_price: number;

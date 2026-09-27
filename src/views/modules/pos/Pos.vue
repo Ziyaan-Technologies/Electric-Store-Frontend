@@ -29,6 +29,8 @@ const session = ref<any>(null);
 const elsewhere = ref<any>(null);
 const counters = ref<any[]>([]);
 const openCounterId = ref<number | null>(null);
+const openSessions = ref<any[]>([]);
+const anyCounter = can('pos_any_counter', 'POS');
 const openingCash = ref<number | string>('');
 const openingCounter = ref(false);
 
@@ -82,7 +84,7 @@ const searchResults = computed(() => {
   return catalog.value.products
     .filter((product) => brandId.value === null || product.brand_id === brandId.value)
     .flatMap((product) => product.variants
-      .filter((variant: any) => `${product.number || ''} ${product.name} ${product.brand?.name || ''} ${variant.name} ${variant.sku} ${variant.barcode}`.toLowerCase().includes(term))
+      .filter((variant: any) => `${product.number || ''} ${product.name} ${product.brand?.name || ''} ${variant.name} ${variant.barcode}`.toLowerCase().includes(term))
       .map((variant: any) => ({ product, variant })))
     .slice(0, 60);
 });
@@ -137,6 +139,9 @@ async function loadSession() {
   const data = (await axios.get('counter-sessions/current', { params: { clientstore_id: authStore.clientstoreId } })).data;
   elsewhere.value = data?.elsewhere ? data : null;
   session.value = data && !data.elsewhere ? data : null;
+  if (anyCounter) {
+    openSessions.value = (await axios.get('counter-sessions/open-list', { params: { clientstore_id: authStore.clientstoreId } })).data;
+  }
   if (!session.value && !elsewhere.value) {
     counters.value = (await axios.get('counters/list', { params: { clientstore_id: authStore.clientstoreId } })).data;
     const free = counters.value.find((counter) => counter.status !== 'Open' && canOpen(counter));
@@ -200,6 +205,14 @@ function chooseCounter(counter: any) {
   openCounterId.value = counter.id;
   openingCash.value = counter.drawer_cash;
 }
+
+async function useSession(row: any) {
+  const data = (await axios.get('counter-sessions/current', { params: { clientstore_id: authStore.clientstoreId, session_id: row.id } })).data;
+  session.value = data && !data.elsewhere ? data : row;
+  alerts.success(`Selling on ${row.counter?.name}`);
+}
+
+const otherSessions = computed(() => openSessions.value.filter((row: any) => row.id !== session.value?.id));
 
 async function openCounter() {
   if (!openCounterId.value) return;
@@ -289,7 +302,7 @@ function openProduct(product: any) {
   categoryDialog.value = true;
 }
 
-function addOutside(item: { product_name: string; quantity: number; unit_price: number }) {
+function addOutside(item: { product_name: string; quantity: number; unit_price: number; creditor_id: number | null; creditor_name: string }) {
   lines.value.push({
     key: `l-${++lineSeq}`,
     product_id: null,
@@ -305,6 +318,8 @@ function addOutside(item: { product_name: string; quantity: number; unit_price: 
     discount_value: 0,
     bill_discount_code: null,
     is_outside: true,
+    creditor_id: item.creditor_id,
+    creditor_name: item.creditor_name,
   });
 }
 
@@ -374,7 +389,7 @@ function payload() {
     debtor_id: debtor.value?.id || null,
     customer_name: customerName.value,
     customer_phone: customerPhone.value,
-    lines: lines.value.map(({ key, stock, ...line }) => line),
+    lines: lines.value.map(({ key, stock, creditor_name, ...line }) => line),
     bill_discounts: activeDiscounts(lines.value, discounts.value),
   };
 }
@@ -476,6 +491,23 @@ onMounted(async () => {
     </div>
   </UiParentCard>
 
+  <UiParentCard v-else-if="!session && anyCounter && openSessions.length" title="Counters Open Now" icon="mdi-counter">
+    <v-row>
+      <v-col v-for="row in openSessions" :key="row.id" cols="12" sm="6" lg="4">
+        <button type="button" class="counter-choice" @click="useSession(row)">
+          <div class="d-flex align-center justify-space-between">
+            <span class="counter-choice__name"><v-icon size="20" class="me-1">mdi-counter</v-icon>{{ row.counter?.name }}</span>
+            <v-chip size="small" color="success" variant="tonal">Open</v-chip>
+          </div>
+          <div class="text-caption text-lightText mt-2 text-start">
+            {{ row.cashier?.full_name }} · since {{ formatDateTime(row.opened_at) }}
+          </div>
+        </button>
+      </v-col>
+    </v-row>
+    <div class="text-caption text-lightText mt-3">The bill goes to the counter you pick, under your own name.</div>
+  </UiParentCard>
+
   <UiParentCard v-else-if="!session" title="Open a Counter" icon="mdi-counter">
     <p class="text-lightText mb-4">Pick your counter and count the cash in it before you start billing.</p>
     <v-row>
@@ -530,6 +562,14 @@ onMounted(async () => {
       </v-chip>
       <v-spacer />
       <div class="d-flex flex-wrap ga-2">
+        <v-menu v-if="anyCounter && otherSessions.length">
+          <template v-slot:activator="{ props: menuProps }">
+            <v-btn v-bind="menuProps" variant="outlined" color="primary" prepend-icon="mdi-swap-horizontal">Switch Counter</v-btn>
+          </template>
+          <v-list density="compact">
+            <v-list-item v-for="row in otherSessions" :key="row.id" :title="row.counter?.name" :subtitle="row.cashier?.full_name" @click="useSession(row)" />
+          </v-list>
+        </v-menu>
         <v-btn v-if="can('counters_cash_in', 'Counter')" variant="outlined" color="success" prepend-icon="mdi-cash-plus" @click="openCash('In')">Cash In</v-btn>
         <v-btn v-if="can('counters_cash_out', 'Counter')" variant="outlined" color="error" prepend-icon="mdi-cash-minus" @click="openCash('Out')">Cash Out</v-btn>
         <v-btn v-if="can('counters_open_close', 'Counter')" variant="flat" color="secondary" prepend-icon="mdi-lock-outline" @click="closeDialog = true">Close Counter</v-btn>
@@ -559,7 +599,7 @@ onMounted(async () => {
       <v-col cols="12" md="7" xl="8">
         <div class="pos-panel">
           <div class="pos-panel__search">
-            <v-text-field v-model="search" prepend-inner-icon="mdi-magnify" placeholder="Search model, size, SKU or scan barcode..." hide-details clearable
+            <v-text-field v-model="search" prepend-inner-icon="mdi-magnify" placeholder="Search model, size or scan barcode..." hide-details clearable
               @keydown.enter.prevent="onSearchEnter" />
           </div>
 
@@ -571,7 +611,7 @@ onMounted(async () => {
                 <div class="font-weight-semibold text-truncate">
                   <span v-if="row.product.number" class="search-row__number">{{ row.product.number }}</span>{{ row.product.name }} · {{ row.variant.name }}
                 </div>
-                <div class="text-caption text-lightText">{{ row.product.brand?.name || 'No brand' }} · {{ row.variant.sku }} · {{ formatNumber(row.variant.stock - (inCart[row.variant.id] || 0), 3) }} in stock</div>
+                <div class="text-caption text-lightText">{{ row.product.brand?.name || 'No brand' }} · {{ formatNumber(row.variant.stock - (inCart[row.variant.id] || 0), 3) }} in stock</div>
               </div>
               <span class="font-weight-bold me-2">{{ formatMoney(row.variant.sale_price) }}</span>
               <v-btn color="primary" variant="flat" size="small" prepend-icon="mdi-plus" :disabled="row.variant.stock - (inCart[row.variant.id] || 0) <= 0" @click="addFromSearch(row)">Add</v-btn>
@@ -642,7 +682,7 @@ onMounted(async () => {
                 </v-avatar>
                 <div class="flex-grow-1 overflow-hidden">
                   <div class="bill-line__name">{{ line.product_name }}</div>
-                  <div class="text-caption text-lightText">{{ line.is_outside ? 'From another shopkeeper' : line.variant_name }}</div>
+                  <div class="text-caption text-lightText">{{ line.is_outside ? (line.creditor_name ? `From ${line.creditor_name}` : 'From another shopkeeper') : line.variant_name }}</div>
                   <div class="d-flex flex-wrap ga-1 mt-1">
                     <v-chip v-if="line.bill_discount_code" size="x-small" color="primary" variant="tonal">
                       {{ line.bill_discount_code }} · {{ discountLabel(discounts.find((discount) => discount.code === line.bill_discount_code)!) }}

@@ -53,6 +53,17 @@ const MainRoutes = {
             }
         },
         {
+            name: 'Expenses',
+            path: '/expenses',
+            component: () => import('@/views/modules/expense/Expenses.vue'),
+            meta: {
+                requiresAuth: true,
+                requiresStore: true,
+                action: ['expenses_view'],
+                subject: 'Expenses'
+            }
+        },
+        {
             name: 'Debtors',
             path: '/debtors',
             component: () => import('@/views/modules/debtor/Debtors.vue'),
@@ -70,6 +81,26 @@ const MainRoutes = {
                 requiresAuth: true,
                 action: ['debtors_view'],
                 subject: 'Debtors'
+            }
+        },
+        {
+            name: 'Creditors',
+            path: '/creditors',
+            component: () => import('@/views/modules/creditor/Creditors.vue'),
+            meta: {
+                requiresAuth: true,
+                action: ['creditors_view'],
+                subject: 'Creditors'
+            }
+        },
+        {
+            name: 'CreditorDetail',
+            path: '/creditors/:id',
+            component: () => import('@/views/modules/creditor/CreditorDetail.vue'),
+            meta: {
+                requiresAuth: true,
+                action: ['creditors_view'],
+                subject: 'Creditors'
             }
         },
         {

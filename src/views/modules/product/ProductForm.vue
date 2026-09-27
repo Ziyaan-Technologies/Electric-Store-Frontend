@@ -25,7 +25,6 @@ const imageFile = ref<File | null>(null);
 const form = ref<any>({
   number: '',
   name: '',
-  description: '',
   category_id: null,
   brand_id: null,
   is_active: true,
@@ -37,7 +36,6 @@ function blankVariant() {
   return {
     id: undefined,
     name: '',
-    sku: '',
     barcode: '',
     cost_price: 0,
     sale_price: 0,
@@ -54,18 +52,10 @@ function margin(variant: any) {
   return Math.round(((price - cost) / price) * 1000) / 10;
 }
 
-function suggestSku(variant: any, index: number) {
-  if (variant.sku || !form.value.name) return;
-  const base = form.value.name.replace(/[^a-z0-9]+/gi, '').slice(0, 6).toUpperCase();
-  const suffix = (variant.name || String(index + 1)).replace(/[^a-z0-9]+/gi, '').slice(0, 6).toUpperCase();
-  variant.sku = `${authStore.clientstore?.store_code || 'SKU'}-${base}-${suffix}`;
-}
-
 function variantError() {
   if (!variants.value.length) return 'Add at least one size / rating';
   for (const [index, variant] of variants.value.entries()) {
     if (!variant.name?.trim()) return `Row ${index + 1}: size / rating is required`;
-    if (!variant.sku?.trim()) return `Row ${index + 1}: SKU is required`;
     if (!(Number(variant.sale_price) > 0)) return `Row ${index + 1}: sale price must be above zero`;
   }
   return '';
@@ -92,7 +82,6 @@ async function save() {
       variants: variants.value.map((variant) => ({
         ...(variant.id ? { id: variant.id } : {}),
         name: variant.name.trim(),
-        sku: variant.sku.trim(),
         barcode: variant.barcode?.trim() || undefined,
         cost_price: Number(variant.cost_price) || 0,
         sale_price: Number(variant.sale_price) || 0,
@@ -123,7 +112,6 @@ onMounted(async () => {
       form.value = {
         number: product.number ?? '',
         name: product.name,
-        description: product.description || '',
         category_id: product.category_id,
         brand_id: product.brand_id || null,
         is_active: product.is_active,
@@ -170,10 +158,6 @@ onMounted(async () => {
                   <v-label class="text-subtitle-1 pb-2 text-lightText">Brand</v-label>
                   <v-autocomplete v-model="form.brand_id" :items="lookups.brands.value" item-title="name" item-value="id" clearable placeholder="No brand" hide-details />
                 </v-col>
-                <v-col cols="12">
-                  <v-label class="text-subtitle-1 pb-2 text-lightText">Description</v-label>
-                  <v-textarea v-model="form.description" rows="3" auto-grow hide-details />
-                </v-col>
               </v-row>
             </v-col>
             <v-col cols="12" lg="4">
@@ -188,7 +172,7 @@ onMounted(async () => {
           <div class="d-flex align-center justify-space-between mt-6 mb-2">
             <div>
               <h4 class="text-h5">Sizes / Ratings</h4>
-              <p class="text-caption text-lightText mb-0">Each row is one thing you sell, like "1 Pole · 32A". Stock and cost of a saved size change through Add Stock.</p>
+              <p class="text-caption text-lightText mb-0">Each row is one thing you sell, like "1 Pole · 32A". Stock of a saved size changes through Add Stock.</p>
             </div>
             <v-btn variant="tonal" color="primary" prepend-icon="mdi-plus" @click="variants.push(blankVariant())">Add Size</v-btn>
           </div>
@@ -198,7 +182,6 @@ onMounted(async () => {
               <thead>
                 <tr>
                   <th style="min-width: 160px">SIZE / RATING</th>
-                  <th style="min-width: 170px">SKU</th>
                   <th style="min-width: 160px">BARCODE</th>
                   <th style="width: 120px">COST</th>
                   <th style="width: 120px">SALE PRICE</th>
@@ -212,12 +195,8 @@ onMounted(async () => {
               <tbody>
                 <tr v-for="(variant, index) in variants" :key="variant.id || `new-${index}`">
                   <td><v-text-field v-model="variant.name" density="compact" hide-details placeholder="1 Pole · 32A" /></td>
-                  <td><v-text-field v-model="variant.sku" density="compact" hide-details @focus="suggestSku(variant, index)" /></td>
                   <td><v-text-field v-model="variant.barcode" density="compact" hide-details prepend-inner-icon="mdi-barcode" /></td>
-                  <td>
-                    <v-text-field v-if="!variant.id" v-model.number="variant.cost_price" type="number" min="0" density="compact" hide-details />
-                    <span v-else class="text-no-wrap">{{ formatMoney(variant.cost_price) }}</span>
-                  </td>
+                  <td><v-text-field v-model.number="variant.cost_price" type="number" min="0" density="compact" hide-details /></td>
                   <td><v-text-field v-model.number="variant.sale_price" type="number" min="0" density="compact" hide-details /></td>
                   <td>
                     <v-text-field v-if="!variant.id" v-model.number="variant.stock" type="number" min="0" density="compact" hide-details />

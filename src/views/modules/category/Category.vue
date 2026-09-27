@@ -30,7 +30,6 @@ const list = useListPage('categories', {
 const headers = ref<Header[]>([
   { title: 'ID', align: 'start', key: 'id' },
   { title: 'CATEGORY', align: 'start', key: 'name' },
-  { title: 'DESCRIPTION', align: 'start', key: 'description' },
   { title: 'PRODUCTS', align: 'start', key: 'product_count' },
   { title: 'ORDER', align: 'start', key: 'sort_order' },
   { title: 'ACTIVE', align: 'start', key: 'is_active' },
@@ -50,7 +49,6 @@ function openForm(item: any = null) {
   editingId.value = item?.id || null;
   form.value = {
     name: item?.name || '',
-    description: item?.description || '',
     sort_order: item?.sort_order ?? list.totalItems.value + 1,
     image_url: item?.image_url || '',
     is_active: item?.is_active ?? true,
@@ -136,7 +134,6 @@ async function remove() {
               <span class="text-subtitle-2 ml-3">{{ item.name }}</span>
             </div>
           </template>
-          <template v-slot:item.description="{ item }">{{ item.description || '-' }}</template>
           <template v-slot:item.is_active="{ item }"><ActiveIcon :active="item.is_active" /></template>
           <template v-slot:item.actions="{ item }">
             <v-btn v-if="$can('categories_edit', 'Category')" icon="mdi-pencil-outline" color="#EFF0F1" size="small" class="me-2" @click="openForm(item)"></v-btn>
@@ -162,10 +159,6 @@ async function remove() {
       <v-col cols="12" class="pt-4">
         <v-label class="text-subtitle-1 pb-2 text-lightText">Name</v-label>
         <v-text-field v-model="form.name" :rules="[rules.required]" placeholder="e.g. MCB" hide-details="auto" />
-      </v-col>
-      <v-col cols="12">
-        <v-label class="text-subtitle-1 pb-2 text-lightText">Description</v-label>
-        <v-textarea v-model="form.description" rows="2" auto-grow hide-details />
       </v-col>
       <v-col cols="12">
         <v-label class="text-subtitle-1 pb-2 text-lightText">Order on sell screen</v-label>

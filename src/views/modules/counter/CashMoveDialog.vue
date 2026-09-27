@@ -26,6 +26,8 @@ const reasons = computed(() => (props.type === 'In'
   ? ['Change money added', 'Owner put cash in', 'Other']
   : ['Shop expense', 'Paid another shopkeeper', 'Owner took cash', 'Bank deposit', 'Other']));
 
+const isExpense = computed(() => form.value.reason === 'Shop expense');
+
 const after = computed(() => props.cashNow + (props.type === 'In' ? 1 : -1) * (Number(form.value.amount) || 0));
 
 async function submit() {
@@ -66,8 +68,9 @@ watch(() => props.modelValue, (open) => {
         <v-text-field v-model="form.amount" type="number" min="0" :rules="[rules.positive]" hide-details="auto" autofocus />
       </v-col>
       <v-col cols="12">
-        <v-label class="text-subtitle-1 pb-2 text-lightText">Note</v-label>
-        <v-text-field v-model="form.note" hide-details :placeholder="type === 'In' ? 'Optional' : 'e.g. Tea, rickshaw, paid Rehman Traders'" />
+        <v-label class="text-subtitle-1 pb-2 text-lightText">{{ isExpense ? 'Spent on' : 'Note' }}</v-label>
+        <v-text-field v-model="form.note" :rules="isExpense ? [rules.required] : []" hide-details="auto"
+          :placeholder="isExpense ? 'What was it spent on?' : (type === 'In' ? 'Optional' : 'e.g. Tea, rickshaw, paid Rehman Traders')" />
       </v-col>
       <v-col cols="12">
         <div class="d-flex justify-space-between pa-3 rounded-lg bg-grey100">

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue';
+import axios from 'axios';
 import DocumentPrint from '@/components/shared/DocumentPrint.vue';
 import { downloadPdf, printElement, rememberPaper, savedPaper, type Paper } from '@/utils/print';
 
@@ -21,6 +22,20 @@ const emit = defineEmits<{
 const paper = ref<Paper>(savedPaper());
 const sheet = ref<HTMLElement | null>(null);
 const downloading = ref(false);
+const brands = ref<any[]>([]);
+
+async function loadBrands() {
+  const shopId = props.doc?.clientstore?.id;
+  if (!shopId) {
+    brands.value = [];
+    return;
+  }
+  try {
+    brands.value = (await axios.get('brands/list', { params: { clientstore_id: shopId } })).data;
+  } catch (error) {
+    brands.value = [];
+  }
+}
 
 function number() {
   if (props.kind === 'quotation') return props.doc?.quotation_number;
@@ -55,6 +70,7 @@ async function download() {
 watch(() => props.modelValue, (open) => {
   if (open) {
     paper.value = savedPaper();
+    loadBrands();
     if (props.autoPrint) setTimeout(print, 400);
   }
 });
@@ -85,7 +101,7 @@ watch(() => props.modelValue, (open) => {
       </div>
       <v-card-text class="print-dialog__preview">
         <div v-if="doc" ref="sheet">
-          <DocumentPrint :doc="doc" :kind="kind" :paper="paper" />
+          <DocumentPrint :doc="doc" :kind="kind" :paper="paper" :brands="brands" />
         </div>
       </v-card-text>
     </v-card>

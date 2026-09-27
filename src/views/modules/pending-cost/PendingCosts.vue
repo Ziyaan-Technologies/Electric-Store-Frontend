@@ -16,6 +16,8 @@ const alerts = useAlerts();
 const pending = usePendingStore();
 const status = ref<string | null>('Pending');
 const costs = ref<Record<number, number | string>>({});
+const shopkeepers = ref<Record<number, any>>({});
+const creditors = ref<any[]>([]);
 const saving = ref<number | null>(null);
 
 const list = useListPage('pending-costs', {
@@ -32,6 +34,7 @@ const headers = ref<Header[]>([
   { title: 'COUNTER', align: 'start', key: 'counter' },
   { title: 'QTY', align: 'start', key: 'quantity' },
   { title: 'SOLD FOR', align: 'start', key: 'total' },
+  { title: 'SHOPKEEPER', align: 'start', key: 'creditor', width: 220 },
   { title: 'BOUGHT PRICE (EACH)', align: 'start', key: 'cost_price', width: 240 },
   { title: 'PROFIT', align: 'start', key: 'profit' },
   { title: 'STATUS', align: 'start', key: 'status' },
@@ -42,12 +45,24 @@ function profit(item: any) {
   return cost === null ? null : item.total - cost * item.quantity;
 }
 
+async function loadCreditors() {
+  try {
+    creditors.value = (await axios.get('creditors/list')).data;
+  } catch (error) {
+    creditors.value = [];
+  }
+}
+
 async function save(item: any) {
   saving.value = item.id;
   try {
-    await axios.put(`sale-items/${item.id}/cost`, { cost_price: costs.value[item.id] });
+    await axios.put(`sale-items/${item.id}/cost`, {
+      cost_price: costs.value[item.id],
+      creditor_id: shopkeepers.value[item.id]?.id ?? item.creditor?.id ?? null,
+    });
     alerts.success(`Bought price saved for ${item.product_name}`);
     delete costs.value[item.id];
+    delete shopkeepers.value[item.id];
     list.refresh();
     pending.refresh();
   } catch (error) {
@@ -56,6 +71,8 @@ async function save(item: any) {
     saving.value = null;
   }
 }
+
+loadCreditors();
 </script>
 
 <template>
@@ -90,6 +107,14 @@ async function save(item: any) {
           </template>
           <template v-slot:item.quantity="{ item }">{{ formatNumber(item.quantity, 3) }} × {{ formatMoney(item.unit_price) }}</template>
           <template v-slot:item.total="{ item }"><span class="font-weight-semibold">{{ formatMoney(item.total) }}</span></template>
+          <template v-slot:item.creditor="{ item }">
+            <v-autocomplete v-if="item.cost_price === null && can('pending_costs_edit', 'Pending Cost')"
+              :model-value="shopkeepers[item.id] ?? item.creditor" :items="creditors" item-title="name" item-value="id" return-object
+              density="compact" hide-details clearable placeholder="Nobody" style="max-width: 200px"
+              @update:model-value="(value: any) => shopkeepers[item.id] = value" />
+            <span v-else-if="item.creditor" class="text-no-wrap">{{ item.creditor.name }}</span>
+            <span v-else class="text-lightText">-</span>
+          </template>
           <template v-slot:item.cost_price="{ item }">
             <div v-if="item.cost_price === null && can('pending_costs_edit', 'Pending Cost')" class="d-flex align-center ga-2 py-1">
               <v-text-field v-model="costs[item.id]" type="number" min="0" density="compact" hide-details placeholder="What you paid" style="max-width: 140px" />

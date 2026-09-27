@@ -163,8 +163,8 @@ onMounted(load);
             <tr v-for="payment in debtor.payments" :key="payment.id">
               <td class="text-no-wrap">{{ formatDateTime(payment.created_at) }}</td>
               <td>
-                <div>{{ payment.counter }}</div>
-                <div class="text-caption text-lightText">{{ payment.shop }} · {{ payment.method }}</div>
+                <div>{{ payment.counter || 'Taken directly' }}</div>
+                <div class="text-caption text-lightText">{{ [payment.shop, payment.method].filter(Boolean).join(' · ') }}</div>
               </td>
               <td>
                 <div>{{ payment.received_by?.full_name }}</div>
@@ -195,6 +195,7 @@ onMounted(load);
           <v-btn value="Card" class="flex-grow-1 text-none">Card</v-btn>
           <v-btn value="Online" class="flex-grow-1 text-none">Online</v-btn>
         </v-btn-toggle>
+        <div class="text-caption text-lightText mt-1">Cash goes into your counter when you have one open, otherwise it is recorded as taken by you.</div>
       </v-col>
       <v-col cols="12">
         <v-label class="text-subtitle-1 pb-2 text-lightText">Note</v-label>

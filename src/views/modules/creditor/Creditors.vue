@@ -20,7 +20,7 @@ const alerts = useAlerts();
 const drawerAlerts = useAlerts();
 const balance = ref<string | null>(null);
 
-const list = useListPage('debtors', {
+const list = useListPage('creditors', {
   filters: () => ({ balance: balance.value || undefined }),
   onError: (error) => alerts.fail(error),
 });
@@ -29,7 +29,7 @@ const headers = ref<Header[]>([
   { title: 'ID', align: 'start', key: 'id' },
   { title: 'NAME', align: 'start', key: 'name' },
   { title: 'PHONE', align: 'start', key: 'phone' },
-  { title: 'BILLS', align: 'start', key: 'bills' },
+  { title: 'TAKEN', align: 'start', key: 'taken' },
   { title: 'PAID', align: 'start', key: 'paid' },
   { title: 'BALANCE', align: 'start', key: 'balance' },
   { title: 'LAST PAYMENT', align: 'start', key: 'last_payment' },
@@ -65,7 +65,7 @@ async function save() {
   if (!(await drawerRef.value.validate())) return;
   saving.value = true;
   try {
-    const image = await uploadImage('debtor', imageFile.value);
+    const image = await uploadImage('creditor', imageFile.value);
     const payload = {
       image_url: image || form.value.image_url || '',
       name: form.value.name.trim(),
@@ -75,11 +75,11 @@ async function save() {
       note: form.value.note?.trim() || '',
     };
     if (editingId.value) {
-      await axios.put(`debtors/${editingId.value}`, payload);
-      alerts.success('Debtor has been updated!');
+      await axios.put(`creditors/${editingId.value}`, payload);
+      alerts.success('Creditor has been updated!');
     } else {
-      await axios.post('debtors', payload);
-      alerts.success('Debtor has been added!');
+      await axios.post('creditors', payload);
+      alerts.success('Creditor has been added!');
     }
     drawer.value = false;
     list.refresh();
@@ -97,8 +97,8 @@ function openDelete(item: any) {
 
 async function remove() {
   try {
-    await axios.delete(`debtors/${deleteId.value}`);
-    alerts.success('Debtor has been deleted!');
+    await axios.delete(`creditors/${deleteId.value}`);
+    alerts.success('Creditor has been deleted!');
     list.refresh();
   } catch (error) {
     alerts.fail(error);
@@ -109,22 +109,19 @@ async function remove() {
 <template>
   <v-row>
     <v-col cols="12" sm="6" lg="4">
-      <DashboardStatCard title="Debtors" :value="list.kpis.value.debtors ?? 0" icon="mdi-account-cash-outline" comparison-label="On khata" />
+      <DashboardStatCard title="Creditors" :value="list.kpis.value.creditors ?? 0" icon="mdi-account-arrow-left-outline" comparison-label="Shopkeepers on khata" />
     </v-col>
     <v-col cols="12" sm="6" lg="4">
-      <DashboardStatCard title="Owing Now" :value="list.kpis.value.owing ?? 0" icon="mdi-account-alert-outline" comparison-label="Have a balance left" />
-    </v-col>
-    <v-col cols="12" sm="6" lg="4">
-      <DashboardStatCard title="Total Owed" :value="formatMoney(list.kpis.value.totalOwed ?? 0)" icon="mdi-cash-clock" comparison-label="Money still with customers" :show-info-icon="(list.kpis.value.totalOwed ?? 0) > 0" />
+      <DashboardStatCard title="We Owe" :value="formatMoney(list.kpis.value.totalOwed ?? 0)" icon="mdi-cash-clock" :comparison-label="`${list.kpis.value.owing ?? 0} to be paid`" :show-info-icon="(list.kpis.value.totalOwed ?? 0) > 0" />
     </v-col>
 
     <v-col cols="12">
       <UiParentCard>
-        <ListToolbar :total="list.totalItems.value" label="Total Debtors" search-placeholder="Search by name or phone..."
-          add-label="Add New Debtor" :can-add="can('debtors_create', 'Debtors')" @search="list.onSearch" @add="openForm()">
+        <ListToolbar :total="list.totalItems.value" label="Total Creditors" search-placeholder="Search by name or phone..."
+          add-label="Add New Creditor" :can-add="can('creditors_create', 'Creditors')" @search="list.onSearch" @add="openForm()">
           <template #filters>
             <div>
-              <v-select v-model="balance" :items="['Owing', 'Clear']" placeholder="All balances" clearable hide-details @update:model-value="list.reload()" />
+              <v-select v-model="balance" :items="['We owe', 'Clear', 'Advance']" placeholder="All balances" clearable hide-details @update:model-value="list.reload()" />
             </div>
           </template>
         </ListToolbar>
@@ -151,17 +148,23 @@ async function remove() {
             </div>
           </template>
           <template v-slot:item.phone="{ item }">{{ item.phone || '-' }}</template>
+          <template v-slot:item.taken="{ item }">{{ formatMoney(item.taken) }}</template>
           <template v-slot:item.paid="{ item }">{{ formatMoney(item.paid) }}</template>
           <template v-slot:item.balance="{ item }">
-            <span class="font-weight-bold" :class="item.balance > 0 ? 'text-error' : 'text-success'">{{ formatMoney(item.balance) }}</span>
+            <span v-if="item.balance > 0" class="font-weight-bold text-error">{{ formatMoney(item.balance) }}</span>
+            <template v-else-if="item.balance < 0">
+              <span class="font-weight-bold text-success">{{ formatMoney(item.advance) }}</span>
+              <div class="text-caption text-lightText">Advance</div>
+            </template>
+            <span v-else class="font-weight-bold text-success">{{ formatMoney(0) }}</span>
           </template>
           <template v-slot:item.last_payment="{ item }">{{ item.last_payment ? formatDate(item.last_payment) : '-' }}</template>
           <template v-slot:item.actions="{ item }">
-            <v-btn icon="mdi-eye-outline" color="#EFF0F1" size="small" class="me-2" title="Open khata" @click="router.push(`/debtors/${item.id}`)"></v-btn>
-            <v-btn v-if="$can('debtors_edit', 'Debtors')" icon="mdi-pencil-outline" color="#EFF0F1" size="small" class="me-2" @click="openForm(item)"></v-btn>
-            <v-btn v-if="$can('debtors_delete', 'Debtors')" icon="mdi-delete-outline" color="#FFEFEF" size="small" class="text-error" @click="openDelete(item)"></v-btn>
+            <v-btn icon="mdi-eye-outline" color="#EFF0F1" size="small" class="me-2" title="Open khata" @click="router.push(`/creditors/${item.id}`)"></v-btn>
+            <v-btn v-if="$can('creditors_edit', 'Creditors')" icon="mdi-pencil-outline" color="#EFF0F1" size="small" class="me-2" @click="openForm(item)"></v-btn>
+            <v-btn v-if="$can('creditors_delete', 'Creditors')" icon="mdi-delete-outline" color="#FFEFEF" size="small" class="text-error" @click="openDelete(item)"></v-btn>
           </template>
-          <template v-slot:no-data><p class="px-2 py-2">No debtors found</p></template>
+          <template v-slot:no-data><p class="px-2 py-2">No creditors found</p></template>
           <template v-slot:bottom>
             <TableBottom v-model:page="list.currentPage.value" :page-count="list.pageCount.value" v-model:per-page="list.itemsPerPageInput.value" :total="list.totalItems.value" />
           </template>
@@ -170,14 +173,14 @@ async function remove() {
     </v-col>
   </v-row>
 
-  <RightDrawer ref="drawerRef" v-model="drawer" :title="editingId ? 'Edit Debtor' : 'Add New Debtor'" icon="mdi-account-cash-outline"
-    :submit-label="editingId ? 'Update Debtor' : 'Add Debtor'" :loading="saving"
+  <RightDrawer ref="drawerRef" v-model="drawer" :title="editingId ? 'Edit Creditor' : 'Add New Creditor'" icon="mdi-account-arrow-left-outline"
+    :submit-label="editingId ? 'Update Creditor' : 'Add Creditor'" :loading="saving"
     :show-error-alert="drawerAlerts.showErrorAlert.value" :error-text="drawerAlerts.errorText.value"
     @submit="save" @close-error="drawerAlerts.clear()">
     <v-row>
       <v-col cols="12" class="pt-4">
         <v-label class="text-subtitle-1 pb-2 text-lightText">Name</v-label>
-        <v-text-field v-model="form.name" :rules="[(v: string) => !!v?.trim() || 'Name is required']" placeholder="e.g. Hikmat Electric Works" hide-details="auto" />
+        <v-text-field v-model="form.name" :rules="[(v: string) => !!v?.trim() || 'Name is required']" placeholder="e.g. Karim Electric Store" hide-details="auto" />
       </v-col>
       <v-col cols="12" sm="6">
         <v-label class="text-subtitle-1 pb-2 text-lightText">Phone</v-label>
@@ -185,7 +188,8 @@ async function remove() {
       </v-col>
       <v-col cols="12" sm="6">
         <v-label class="text-subtitle-1 pb-2 text-lightText">Opening Balance</v-label>
-        <v-text-field v-model="form.opening_balance" type="number" min="0" :disabled="!!editingId && !$can('debtors_edit', 'Debtors')" hide-details="auto" />
+        <v-text-field v-model="form.opening_balance" type="number" :disabled="!!editingId && !$can('creditors_edit', 'Creditors')" hide-details="auto" />
+        <div class="text-caption text-lightText mt-1">What we already owe him. A minus number means he is holding our advance.</div>
       </v-col>
       <v-col cols="12">
         <v-label class="text-subtitle-1 pb-2 text-lightText">Address</v-label>
@@ -201,5 +205,5 @@ async function remove() {
     </v-row>
   </RightDrawer>
 
-  <DeleteDialog v-model="deleteOpen" message="Are you sure you want to delete this debtor?" hint="A debtor with bills or payments cannot be deleted." @confirm="remove" />
+  <DeleteDialog v-model="deleteOpen" message="Are you sure you want to delete this creditor?" hint="A creditor with khata entries or payments cannot be deleted." @confirm="remove" />
 </template>

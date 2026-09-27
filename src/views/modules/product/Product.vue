@@ -120,7 +120,7 @@ onMounted(async () => {
 
     <v-col cols="12">
       <UiParentCard>
-        <ListToolbar :total="list.totalItems.value" label="Total Products" search-placeholder="Search number, name, size, SKU, barcode..."
+        <ListToolbar :total="list.totalItems.value" label="Total Products" search-placeholder="Search number, name, size, barcode..."
           add-label="Add New Product" :can-add="can('products_create', 'Product')" @search="list.onSearch" @add="router.push('/products/create')">
           <template #filters>
             <div>
@@ -162,7 +162,7 @@ onMounted(async () => {
           </template>
           <template v-slot:item.category="{ item }">{{ item.category?.name }}</template>
           <template v-slot:item.variants="{ item }">
-            <div v-for="variant in item.variants.slice(0, 3)" :key="variant.id" class="text-caption">{{ variant.name }} · {{ variant.sku }}</div>
+            <div v-for="variant in item.variants.slice(0, 3)" :key="variant.id" class="text-caption">{{ variant.name }}</div>
             <div v-if="item.variants.length > 3" class="text-caption text-lightText">+{{ item.variants.length - 3 }} more</div>
           </template>
           <template v-slot:item.price="{ item }">{{ priceRange(item.variants) }}</template>

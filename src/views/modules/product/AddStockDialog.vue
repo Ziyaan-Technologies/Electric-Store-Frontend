@@ -19,7 +19,7 @@ const form = ref<any>({ variant_id: null, quantity: '', cost_price: '', supplier
 
 const sizes = computed(() => (props.product?.variants || []).map((variant: any) => ({
   value: variant.id,
-  title: `${variant.name} · ${variant.sku}`,
+  title: variant.name,
   variant,
 })));
 
