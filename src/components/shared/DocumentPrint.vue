@@ -120,7 +120,6 @@ function amount(value?: number | string | null) {
     </div>
 
     <div v-if="brandLogos.length" class="print-a4__brands">
-      <div class="print-a4__brands-label">We deal in</div>
       <div class="print-a4__brands-row">
         <template v-for="brand in brandLogos" :key="brand.id">
           <img v-if="brand.image_url" :src="brand.image_url" :alt="brand.name" crossorigin="anonymous" />
@@ -280,7 +279,6 @@ function amount(value?: number | string | null) {
     </div>
 
     <div v-if="brandLogos.length" class="print-a4__brands">
-      <div class="print-a4__brands-label">We deal in</div>
       <div class="print-a4__brands-row">
         <template v-for="brand in brandLogos" :key="brand.id">
           <img v-if="brand.image_url" :src="brand.image_url" :alt="brand.name" crossorigin="anonymous" />
@@ -412,15 +410,6 @@ function amount(value?: number | string | null) {
   margin-top: 22px;
   padding-top: 12px;
   border-top: 1px solid #dfe6ef;
-}
-
-.print-a4__brands-label {
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #8a97a8;
-  margin-bottom: 8px;
-  text-align: center;
 }
 
 .print-a4__brands-row {
