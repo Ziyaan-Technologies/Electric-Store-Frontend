@@ -116,7 +116,7 @@ async function findDebtors(term: string) {
   if (!can('pos_debtor_sale', 'POS')) return;
   loadingDebtors.value = true;
   try {
-    debtors.value = (await axios.get('debtors/list', { params: { search: term || undefined } })).data;
+    debtors.value = (await axios.get('debtors/list', { params: { clientstore_id: authStore.clientstoreId, search: term || undefined } })).data;
   } catch (error) {
     debtors.value = [];
   } finally {

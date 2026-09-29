@@ -3,6 +3,7 @@ import { ref, watch } from 'vue';
 import axios from 'axios';
 import RightDrawer from '@/components/shared/RightDrawer.vue';
 import { useAlerts } from '@/composables/useAlerts';
+import { useAuthStore } from '@/stores/auth';
 import { can } from '@/utils/permissions';
 import { formatMoney, rules } from '@/utils/api';
 
@@ -16,6 +17,7 @@ const emit = defineEmits<{
 }>();
 
 const alerts = useAlerts();
+const authStore = useAuthStore();
 const drawerRef = ref<any>(null);
 const form = ref({ product_name: '', quantity: 1, unit_price: '' as number | string });
 const creditor = ref<any>(null);
@@ -27,7 +29,7 @@ const adding = ref(false);
 async function findCreditors(term: string) {
   loadingCreditors.value = true;
   try {
-    creditors.value = (await axios.get('creditors/list', { params: { search: term || undefined } })).data;
+    creditors.value = (await axios.get('creditors/list', { params: { clientstore_id: authStore.clientstoreId, search: term || undefined } })).data;
   } catch (error) {
     creditors.value = [];
   } finally {
@@ -40,7 +42,7 @@ async function addCreditor() {
   if (!name) return;
   adding.value = true;
   try {
-    const saved = (await axios.post('creditors', { name })).data;
+    const saved = (await axios.post('creditors', { name, clientstore_id: authStore.clientstoreId })).data;
     creditors.value = [saved, ...creditors.value];
     creditor.value = saved;
   } catch (error) {

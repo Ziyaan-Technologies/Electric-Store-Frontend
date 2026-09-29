@@ -11,16 +11,19 @@ import DashboardStatCard from '@/components/shared/DashboardStatCard.vue';
 import ImageField from '@/components/shared/ImageField.vue';
 import { useListPage } from '@/composables/useListPage';
 import { useAlerts } from '@/composables/useAlerts';
+import { useAuthStore } from '@/stores/auth';
 import { can } from '@/utils/permissions';
 import { formatDate, formatMoney, uploadImage } from '@/utils/api';
 import type { Header } from '@/models/type-interfaces';
 
 const router = useRouter();
+const authStore = useAuthStore();
 const alerts = useAlerts();
 const drawerAlerts = useAlerts();
 const balance = ref<string | null>(null);
 
 const list = useListPage('creditors', {
+  storeScoped: true,
   filters: () => ({ balance: balance.value || undefined }),
   onError: (error) => alerts.fail(error),
 });
@@ -67,6 +70,7 @@ async function save() {
   try {
     const image = await uploadImage('creditor', imageFile.value);
     const payload = {
+      clientstore_id: authStore.clientstoreId,
       image_url: image || form.value.image_url || '',
       name: form.value.name.trim(),
       phone: form.value.phone?.trim() || '',

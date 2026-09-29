@@ -69,6 +69,7 @@ const MainRoutes = {
             component: () => import('@/views/modules/debtor/Debtors.vue'),
             meta: {
                 requiresAuth: true,
+                requiresStore: true,
                 action: ['debtors_view'],
                 subject: 'Debtors'
             }
@@ -79,6 +80,7 @@ const MainRoutes = {
             component: () => import('@/views/modules/debtor/DebtorDetail.vue'),
             meta: {
                 requiresAuth: true,
+                requiresStore: true,
                 action: ['debtors_view'],
                 subject: 'Debtors'
             }
@@ -89,6 +91,7 @@ const MainRoutes = {
             component: () => import('@/views/modules/creditor/Creditors.vue'),
             meta: {
                 requiresAuth: true,
+                requiresStore: true,
                 action: ['creditors_view'],
                 subject: 'Creditors'
             }
@@ -99,6 +102,7 @@ const MainRoutes = {
             component: () => import('@/views/modules/creditor/CreditorDetail.vue'),
             meta: {
                 requiresAuth: true,
+                requiresStore: true,
                 action: ['creditors_view'],
                 subject: 'Creditors'
             }

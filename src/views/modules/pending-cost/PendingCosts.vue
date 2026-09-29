@@ -8,11 +8,13 @@ import StatusChip from '@/components/shared/StatusChip.vue';
 import { useListPage } from '@/composables/useListPage';
 import { useAlerts } from '@/composables/useAlerts';
 import { usePendingStore } from '@/stores/pending';
+import { useAuthStore } from '@/stores/auth';
 import { can } from '@/utils/permissions';
 import { formatDateTime, formatMoney, formatNumber } from '@/utils/api';
 import type { Header } from '@/models/type-interfaces';
 
 const alerts = useAlerts();
+const authStore = useAuthStore();
 const pending = usePendingStore();
 const status = ref<string | null>('Pending');
 const costs = ref<Record<number, number | string>>({});
@@ -47,7 +49,7 @@ function profit(item: any) {
 
 async function loadCreditors() {
   try {
-    creditors.value = (await axios.get('creditors/list')).data;
+    creditors.value = (await axios.get('creditors/list', { params: { clientstore_id: authStore.clientstoreId } })).data;
   } catch (error) {
     creditors.value = [];
   }
