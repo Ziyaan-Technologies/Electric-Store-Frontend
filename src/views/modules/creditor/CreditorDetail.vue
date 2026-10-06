@@ -28,6 +28,12 @@ const entryRef = ref<any>(null);
 const addingEntry = ref(false);
 const entryForm = ref<any>({ amount: '', note: '' });
 
+const incentiveAlerts = useAlerts();
+const incentiveOpen = ref(false);
+const incentiveRef = ref<any>(null);
+const addingIncentive = ref(false);
+const incentiveForm = ref<any>({ amount: '', note: '' });
+
 const owed = computed(() => Number(creditor.value?.balance || 0));
 const extra = computed(() => Math.max(Number(payForm.value.amount || 0) - Math.max(owed.value, 0), 0));
 
@@ -92,6 +98,31 @@ async function addEntry() {
   }
 }
 
+function openIncentive() {
+  incentiveForm.value = { amount: '', note: '' };
+  incentiveAlerts.clear();
+  incentiveOpen.value = true;
+  incentiveRef.value?.resetValidation();
+}
+
+async function addIncentive() {
+  if (!(await incentiveRef.value.validate())) return;
+  addingIncentive.value = true;
+  try {
+    creditor.value = (await axios.post(`creditors/${route.params.id}/incentives`, {
+      amount: Number(incentiveForm.value.amount) || 0,
+      clientstore_id: authStore.clientstoreId || undefined,
+      note: incentiveForm.value.note?.trim() || '',
+    })).data;
+    incentiveOpen.value = false;
+    alerts.success(`${formatMoney(incentiveForm.value.amount)} added · incentive is now ${formatMoney(creditor.value.incentive)}`);
+  } catch (error) {
+    incentiveAlerts.fail(error);
+  } finally {
+    addingIncentive.value = false;
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -123,6 +154,7 @@ onMounted(load);
           <div class="d-flex ga-2">
             <v-btn variant="outlined" color="primary" prepend-icon="mdi-arrow-left" @click="router.push('/creditors')">Back</v-btn>
             <v-btn v-if="can('creditors_edit', 'Creditors')" variant="outlined" color="primary" prepend-icon="mdi-plus" @click="openEntry">Add What We Owe</v-btn>
+            <v-btn v-if="can('creditors_edit', 'Creditors')" variant="outlined" color="primary" prepend-icon="mdi-gift-outline" @click="openIncentive">Add Incentive</v-btn>
             <v-btn v-if="can('creditors_payment', 'Creditors')" color="primary" variant="flat" prepend-icon="mdi-cash-fast" @click="openPay">Pay Him</v-btn>
           </div>
         </div>
@@ -139,6 +171,9 @@ onMounted(load);
           </div>
           <div class="khata-summary__box">
             <span>Khata entries</span><strong>{{ creditor.entries }}</strong>
+          </div>
+          <div class="khata-summary__box">
+            <span>Incentive</span><strong class="text-primary">{{ formatMoney(creditor.incentive) }}</strong>
           </div>
         </div>
         <p v-if="creditor.note" class="text-body-2 text-lightText mt-4 mb-0">{{ creditor.note }}</p>
@@ -173,6 +208,42 @@ onMounted(load);
     </v-col>
 
     <v-col cols="12" lg="5">
+      <UiParentCard title="Incentive" icon="mdi-gift-outline" class="mb-6">
+        <v-table class="border rounded-md">
+          <thead>
+            <tr>
+              <th class="text-left">DATE</th>
+              <th class="text-left">WHAT FOR</th>
+              <th class="text-right">AMOUNT</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="creditor.opening_incentive">
+              <td class="text-lightText">-</td>
+              <td>Set when he was added</td>
+              <td class="text-right font-weight-bold text-primary">{{ formatMoney(creditor.opening_incentive) }}</td>
+            </tr>
+            <tr v-for="row in creditor.incentives" :key="row.id">
+              <td class="text-no-wrap">{{ formatDateTime(row.created_at) }}</td>
+              <td>
+                <div>{{ row.note || 'Incentive' }}</div>
+                <div v-if="row.added_by" class="text-caption text-lightText">{{ row.added_by.full_name }}</div>
+              </td>
+              <td class="text-right font-weight-bold text-primary">{{ formatMoney(row.amount) }}</td>
+            </tr>
+            <tr v-if="!creditor.incentives.length && !creditor.opening_incentive">
+              <td colspan="3" class="text-center text-lightText py-6">No incentive yet</td>
+            </tr>
+          </tbody>
+          <tfoot v-if="creditor.incentive">
+            <tr>
+              <td colspan="2" class="text-right font-weight-bold">Total</td>
+              <td class="text-right font-weight-bold text-primary">{{ formatMoney(creditor.incentive) }}</td>
+            </tr>
+          </tfoot>
+        </v-table>
+      </UiParentCard>
+
       <UiParentCard title="Payments" icon="mdi-cash-fast">
         <v-table class="border rounded-md">
           <thead>
@@ -226,6 +297,23 @@ onMounted(load);
       <v-col cols="12">
         <v-label class="text-subtitle-1 pb-2 text-lightText">Note</v-label>
         <v-text-field v-model="payForm.note" placeholder="Optional" hide-details />
+      </v-col>
+    </v-row>
+  </RightDrawer>
+
+  <RightDrawer ref="incentiveRef" v-model="incentiveOpen" title="Add Incentive" icon="mdi-gift-outline"
+    :subtitle="creditor ? `${creditor.name} · ${formatMoney(creditor.incentive)} so far` : ''" submit-label="Add Incentive" :loading="addingIncentive"
+    :show-error-alert="incentiveAlerts.showErrorAlert.value" :error-text="incentiveAlerts.errorText.value"
+    @submit="addIncentive" @close-error="incentiveAlerts.clear()">
+    <v-row>
+      <v-col cols="12" class="pt-4">
+        <v-label class="text-subtitle-1 pb-2 text-lightText">Amount</v-label>
+        <v-text-field v-model="incentiveForm.amount" type="number" min="0" :rules="[(v: any) => Number(v) > 0 || 'Enter the amount']" hide-details="auto" autofocus />
+        <div class="text-caption text-lightText mt-1">Money he gives for hitting a target. It does not change what we owe him.</div>
+      </v-col>
+      <v-col cols="12">
+        <v-label class="text-subtitle-1 pb-2 text-lightText">What for</v-label>
+        <v-text-field v-model="incentiveForm.note" placeholder="e.g. 100 fans target, September" hide-details />
       </v-col>
     </v-row>
   </RightDrawer>

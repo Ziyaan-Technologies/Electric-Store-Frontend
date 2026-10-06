@@ -34,6 +34,7 @@ const headers = ref<Header[]>([
   { title: 'PHONE', align: 'start', key: 'phone' },
   { title: 'TAKEN', align: 'start', key: 'taken' },
   { title: 'PAID', align: 'start', key: 'paid' },
+  { title: 'INCENTIVE', align: 'start', key: 'incentive' },
   { title: 'BALANCE', align: 'start', key: 'balance' },
   { title: 'LAST PAYMENT', align: 'start', key: 'last_payment' },
   { title: 'ACTIONS', key: 'actions', sortable: false },
@@ -55,6 +56,7 @@ function openForm(item: any = null) {
     phone: item?.phone || '',
     address: item?.address || '',
     opening_balance: item?.opening_balance ?? 0,
+    incentive: item?.incentive ?? 0,
     note: item?.note || '',
     image_url: item?.image_url || '',
   };
@@ -76,6 +78,7 @@ async function save() {
       phone: form.value.phone?.trim() || '',
       address: form.value.address?.trim() || '',
       opening_balance: Number(form.value.opening_balance) || 0,
+      incentive: Number(form.value.incentive) || 0,
       note: form.value.note?.trim() || '',
     };
     if (editingId.value) {
@@ -119,6 +122,10 @@ async function remove() {
       <DashboardStatCard title="We Owe" :value="formatMoney(list.kpis.value.totalOwed ?? 0)" icon="mdi-cash-clock" :comparison-label="`${list.kpis.value.owing ?? 0} to be paid`" :show-info-icon="(list.kpis.value.totalOwed ?? 0) > 0" />
     </v-col>
 
+    <v-col cols="12" sm="6" lg="4">
+      <DashboardStatCard title="Incentive" :value="formatMoney(list.kpis.value.totalIncentive ?? 0)" icon="mdi-gift-outline" comparison-label="Money they give on targets" />
+    </v-col>
+
     <v-col cols="12">
       <UiParentCard>
         <ListToolbar :total="list.totalItems.value" label="Total Creditors" search-placeholder="Search by name or phone..."
@@ -154,6 +161,10 @@ async function remove() {
           <template v-slot:item.phone="{ item }">{{ item.phone || '-' }}</template>
           <template v-slot:item.taken="{ item }">{{ formatMoney(item.taken) }}</template>
           <template v-slot:item.paid="{ item }">{{ formatMoney(item.paid) }}</template>
+          <template v-slot:item.incentive="{ item }">
+            <span v-if="item.incentive" class="font-weight-bold text-primary">{{ formatMoney(item.incentive) }}</span>
+            <span v-else class="text-lightText">-</span>
+          </template>
           <template v-slot:item.balance="{ item }">
             <span v-if="item.balance > 0" class="font-weight-bold text-error">{{ formatMoney(item.balance) }}</span>
             <template v-else-if="item.balance < 0">
@@ -194,6 +205,11 @@ async function remove() {
         <v-label class="text-subtitle-1 pb-2 text-lightText">Opening Balance</v-label>
         <v-text-field v-model="form.opening_balance" type="number" :disabled="!!editingId && !$can('creditors_edit', 'Creditors')" hide-details="auto" />
         <div class="text-caption text-lightText mt-1">What we already owe him. A minus number means he is holding our advance.</div>
+      </v-col>
+      <v-col cols="12" sm="6">
+        <v-label class="text-subtitle-1 pb-2 text-lightText">Incentive</v-label>
+        <v-text-field v-model="form.incentive" type="number" min="0" hide-details="auto" />
+        <div class="text-caption text-lightText mt-1">What he gives you when a target is hit. Not part of his balance.</div>
       </v-col>
       <v-col cols="12">
         <v-label class="text-subtitle-1 pb-2 text-lightText">Address</v-label>
