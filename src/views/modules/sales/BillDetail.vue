@@ -10,7 +10,7 @@ import RightDrawer from '@/components/shared/RightDrawer.vue';
 import { useAlerts } from '@/composables/useAlerts';
 import { can } from '@/utils/permissions';
 import { discountLabel } from '@/utils/bill';
-import { formatDateTime, formatMoney, formatNumber } from '@/utils/api';
+import { formatDate, formatDateTime, formatMoney, formatNumber } from '@/utils/api';
 
 const route = useRoute();
 const alerts = useAlerts();
@@ -209,6 +209,19 @@ onMounted(load);
             <div class="text-error"><span>Refunded</span><span>- {{ formatMoney(sale.refunded_amount) }}</span></div>
             <div class="font-weight-bold"><span>Net after returns</span><span>{{ formatMoney(sale.total_amount - sale.refunded_amount) }}</span></div>
           </template>
+          <template v-if="sale.paid_amount || sale.payments.length || sale.khata_amount">
+            <div class="summary-list__heading">Payments</div>
+            <div><span>At the counter{{ sale.payments.length ? ` · ${formatDateTime(sale.created_at)}` : '' }}</span><span>{{ formatMoney(sale.paid_amount) }}</span></div>
+            <div v-for="payment in [...sale.payments].reverse()" :key="payment.id">
+              <span>{{ formatDateTime(payment.created_at) }} · {{ payment.method }}<template v-if="payment.received_by"> · {{ payment.received_by.full_name }}</template></span>
+              <span>{{ formatMoney(payment.amount) }}</span>
+            </div>
+            <div class="font-weight-bold"><span>Paid so far</span><span class="text-successdark">{{ formatMoney(sale.payment?.settled ?? sale.paid_amount) }}</span></div>
+            <div v-if="sale.khata_amount > 0" class="font-weight-bold">
+              <span>Remaining<template v-if="sale.due_date"> · due {{ formatDate(sale.due_date) }}</template></span>
+              <span class="text-error">{{ formatMoney(sale.khata_amount) }}</span>
+            </div>
+          </template>
           <div class="mt-2" :class="sale.pending_costs ? 'text-orange' : 'text-successdark'">
             <span>Profit{{ sale.pending_costs ? ' (provisional)' : '' }}</span><span class="font-weight-bold">{{ formatMoney(sale.profit) }}</span>
           </div>
@@ -284,6 +297,15 @@ onMounted(load);
   gap: 12px;
   padding: 5px 0;
   font-size: 13.5px;
+}
+
+.summary-list__heading {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: rgb(var(--v-theme-lightText));
 }
 
 .summary-list__total {

@@ -19,6 +19,12 @@ const person = computed(() => (isQuotation.value ? props.doc.created_by_user?.fu
 const party = computed(() => [props.doc.customer_name, props.doc.customer_phone].filter(Boolean).join(' · ') || 'Walk-in customer');
 const shopName = computed(() => props.doc?.clientstore?.store_name || props.doc?.vendor?.business_name || '');
 const shopLogo = computed(() => props.doc?.clientstore?.image_url || '');
+// what was paid after the bill was made, oldest first
+const laterPayments = computed(() => [...(props.doc?.payments || [])].sort((a: any, b: any) => a.id - b.id));
+
+const paidSoFar = computed(() => (Number(props.doc?.paid_amount) || 0)
+  + laterPayments.value.reduce((sum: number, payment: any) => sum + (Number(payment.amount) || 0), 0));
+
 const brandLogos = computed(() => {
   const active = (props.brands || []).filter((brand: any) => brand.is_active !== false);
   // the ones with a logo look best on paper, so they come first
@@ -177,6 +183,10 @@ function amount(value?: number | string | null) {
       <div class="print-receipt__line" />
       <div class="print-receipt__row"><span>{{ doc.khata_amount > 0 ? 'Paid Now' : (doc.payment_method === 'Cash' ? 'Cash Received' : `Paid by ${doc.payment_method}`) }}</span><span>{{ amount(doc.amount_received) }}</span></div>
       <div v-if="doc.payment_method === 'Cash' && !(doc.khata_amount > 0)" class="print-receipt__row font-weight-bold"><span>Change</span><span>{{ amount(doc.change_amount) }}</span></div>
+      <template v-for="payment in laterPayments" :key="payment.id">
+        <div class="print-receipt__row"><span>{{ formatDate(payment.created_at) }} · {{ payment.method }}</span><span>{{ amount(payment.amount) }}</span></div>
+      </template>
+      <div v-if="laterPayments.length" class="print-receipt__row font-weight-bold"><span>Paid so far</span><span>{{ amount(paidSoFar) }}</span></div>
       <template v-if="doc.khata_amount > 0">
         <div class="print-receipt__row print-receipt__total"><span>REMAINING</span><span>{{ currency }} {{ amount(doc.khata_amount) }}</span></div>
         <div v-if="doc.due_date" class="print-receipt__row"><span>To be paid by</span><span>{{ formatDate(doc.due_date) }}</span></div>
@@ -266,6 +276,10 @@ function amount(value?: number | string | null) {
         <template v-if="!isQuotation">
           <div class="print-a4__pair"><span>{{ doc.khata_amount > 0 ? 'Paid now' : (doc.payment_method === 'Cash' ? 'Cash received' : `Paid by ${doc.payment_method}`) }}</span><span>{{ amount(doc.amount_received) }}</span></div>
           <div v-if="doc.payment_method === 'Cash' && !(doc.khata_amount > 0)" class="print-a4__pair"><span>Change</span><span>{{ amount(doc.change_amount) }}</span></div>
+          <div v-for="payment in laterPayments" :key="payment.id" class="print-a4__pair">
+            <span>Paid {{ formatDate(payment.created_at) }} · {{ payment.method }}</span><span>{{ amount(payment.amount) }}</span>
+          </div>
+          <div v-if="laterPayments.length" class="print-a4__pair font-weight-bold"><span>Paid so far</span><span>{{ amount(paidSoFar) }}</span></div>
           <template v-if="doc.khata_amount > 0">
             <div class="print-a4__pair print-a4__due"><span>Remaining balance</span><span>{{ currency }} {{ amount(doc.khata_amount) }}</span></div>
             <div v-if="doc.due_date" class="print-a4__pair"><span>To be paid by</span><span>{{ formatDate(doc.due_date) }}</span></div>
@@ -293,7 +307,7 @@ function amount(value?: number | string | null) {
 <style scoped>
 .print-sheet {
   background: #fff;
-  color: #111;
+  color: #000;
 }
 
 .print-receipt {
@@ -421,15 +435,15 @@ function amount(value?: number | string | null) {
 }
 
 .print-a4__brands-row img {
-  height: 26px;
-  max-width: 96px;
+  height: 46px;
+  max-width: 150px;
   object-fit: contain;
 }
 
 .print-a4__brand-name {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  color: #4a5a6d;
+  color: #1f2937;
   padding: 4px 9px;
   border: 1px solid #e2e8f0;
   border-radius: 5px;
@@ -443,10 +457,10 @@ function amount(value?: number | string | null) {
 .print-a4__credit {
   margin-top: 14px;
   padding-top: 10px;
-  border-top: 1px solid #eef2f7;
+  border-top: 1px solid #cbd5e1;
   text-align: center;
-  font-size: 10px;
-  color: #9aa7b6;
+  font-size: 10.5px;
+  color: #475569;
 }
 
 .print-receipt__credit {
@@ -471,7 +485,7 @@ function amount(value?: number | string | null) {
 }
 
 .print-a4__muted {
-  color: #5a6a85;
+  color: #334155;
   font-size: 11.5px;
 }
 
@@ -492,7 +506,7 @@ function amount(value?: number | string | null) {
   font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #8a94a6;
+  color: #334155;
   margin-bottom: 2px;
 }
 
