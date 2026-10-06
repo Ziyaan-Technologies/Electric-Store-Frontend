@@ -451,7 +451,7 @@ function amount(value?: number | string | null) {
 
 .print-a4__due {
   font-weight: 700;
-  color: #c62828;
+  color: #7f1010;
 }
 
 .print-a4__credit {
@@ -460,7 +460,7 @@ function amount(value?: number | string | null) {
   border-top: 1px solid #cbd5e1;
   text-align: center;
   font-size: 10.5px;
-  color: #475569;
+  color: #334155;
 }
 
 .print-receipt__credit {
@@ -476,7 +476,7 @@ function amount(value?: number | string | null) {
   font-size: 24px;
   font-weight: 700;
   letter-spacing: 2px;
-  color: #1565c0;
+  color: #0b2545;
 }
 
 .print-a4__number {
@@ -561,13 +561,13 @@ function amount(value?: number | string | null) {
 }
 
 .print-a4__returned {
-  color: #dc2626;
+  color: #7f1010;
   font-size: 11.5px;
   font-weight: 600;
 }
 
 .print-a4__title--return {
-  color: #dc2626;
+  color: #7f1010;
 }
 
 .print-a4__grand--return {
@@ -578,9 +578,11 @@ function amount(value?: number | string | null) {
   margin: 6px 0;
   padding: 8px 10px !important;
   border-radius: 6px;
-  background: #1565c0;
+  background: #0b2545;
   color: #fff;
   font-size: 15px;
   font-weight: 700;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 </style>

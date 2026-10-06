@@ -21,6 +21,25 @@ export function rememberPaper(paper: Paper) {
     }
 }
 
+// a black and white printer turns every light grey into almost nothing,
+// so the sheet is forced to real black with solid fills before it goes out
+const inkRules = `
+    html, body { background: #fff !important; }
+    .print-sheet { box-shadow: none !important; border: 0 !important; margin: 0 !important; }
+    .print-sheet, .print-sheet * {
+        color: #000 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    .print-sheet .print-a4__grand, .print-sheet .print-a4__grand * { background: #000 !important; color: #fff !important; }
+    .print-sheet .print-a4__table th { background: #dcdcdc !important; border-bottom: 1.5px solid #000 !important; }
+    .print-sheet .print-a4__table td { border-bottom: 1px solid #555 !important; }
+    .print-sheet .print-a4__box, .print-sheet .print-a4__meta > div { border-color: #000 !important; }
+    .print-sheet .print-a4__due, .print-sheet .print-a4__due *,
+    .print-sheet .print-a4__returned, .print-sheet .print-a4__returned * { font-weight: 700 !important; }
+    .print-sheet .print-a4__credit { border-top-color: #000 !important; }
+`;
+
 export function printElement(element: HTMLElement, paper: Paper, title = 'Print') {
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
@@ -35,7 +54,7 @@ export function printElement(element: HTMLElement, paper: Paper, title = 'Print'
     const doc = frame?.document;
     if (!frame || !doc) return;
     doc.open();
-    doc.write(`<!DOCTYPE html><html><head><title>${title}</title>${styles}<style>${pageRules[paper]} html, body { background: #fff !important; } .print-sheet { box-shadow: none !important; border: 0 !important; margin: 0 !important; }</style></head><body>${element.outerHTML}</body></html>`);
+    doc.write(`<!DOCTYPE html><html><head><title>${title}</title>${styles}<style>${pageRules[paper]}${inkRules}</style></head><body>${element.outerHTML}</body></html>`);
     doc.close();
     const trigger = () => {
         frame.focus();
