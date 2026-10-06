@@ -103,9 +103,11 @@ function onReturned(result: any) {
 onMounted(() => lookups.loadCounters().catch((error) => alerts.fail(error)));
 const deleteOpen = ref(false);
 const deleteId = ref<number | null>(null);
+const deleteNumber = ref('');
 
 function openDelete(item: any) {
   deleteId.value = item.id;
+  deleteNumber.value = item.bill_number;
   deleteOpen.value = true;
 }
 
@@ -187,7 +189,7 @@ async function removeBill() {
               <v-btn icon="mdi-printer" color="#EFF0F1" size="small" title="Print" @click="print(item)" />
               <v-btn v-if="can('sales_edit', 'Sales') && item.status === 'Completed'" icon="mdi-pencil-outline" color="#EFF0F1" size="small" title="Change this bill"
                 @click="router.push(`/pos?bill=${item.id}`)" />
-              <v-btn v-if="can('sales_delete', 'Sales') && item.status === 'Completed'" icon="mdi-delete-outline" color="#FFEFEF" size="small" class="text-error"
+              <v-btn v-if="can('sales_delete', 'Sales')" icon="mdi-delete-outline" color="#FFEFEF" size="small" class="text-error"
                 title="Delete this bill" @click="openDelete(item)" />
               <v-btn v-if="can('pos_return', 'POS') && item.status !== 'Returned'" icon="mdi-keyboard-return" color="#FFEFEF" size="small" class="text-error" title="Return" @click="openReturn(item)" />
             </div>
@@ -204,5 +206,7 @@ async function removeBill() {
   <PrintDialog v-model="printOpen" :doc="printDoc" :kind="printKind" />
   <ReturnDialog v-model="returnOpen" :sale-id="returnSaleId" @returned="onReturned" />
 
-  <DeleteDialog v-model="deleteOpen" message="Delete this bill?" hint="The stock comes back and the money leaves the counter. A bill with a return or a payment on it, or one from a counter that is already closed, cannot be deleted." @confirm="removeBill" />
+  <DeleteDialog v-model="deleteOpen" :message="`Delete bill ${deleteNumber}?`"
+    hint="The stock comes back and the money leaves the counter; a return slip on this bill goes with it. If the counter is already closed, that day's totals change too. A bill that has had a payment taken against it cannot be deleted. This cannot be undone."
+    @confirm="removeBill" />
 </template>

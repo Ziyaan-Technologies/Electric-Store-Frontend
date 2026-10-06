@@ -31,6 +31,9 @@ const entryOpen = ref(false);
 const entryRef = ref<any>(null);
 const addingEntry = ref(false);
 const entryForm = ref<any>({ amount: '', note: '' });
+const entryId = ref<number | null>(null);
+const entryDeleteOpen = ref(false);
+const entryDeleteId = ref<number | null>(null);
 
 const incentiveAlerts = useAlerts();
 const incentiveOpen = ref(false);
@@ -104,23 +107,49 @@ async function pay() {
 }
 
 function openEntry() {
+  entryId.value = null;
   entryForm.value = { amount: '', note: '' };
   entryAlerts.clear();
   entryOpen.value = true;
   entryRef.value?.resetValidation();
 }
 
+function editEntry(row: any) {
+  entryId.value = row.id;
+  entryForm.value = { amount: row.amount, note: row.note || '' };
+  entryAlerts.clear();
+  entryOpen.value = true;
+  entryRef.value?.resetValidation();
+}
+
+function openEntryDelete(row: any) {
+  entryDeleteId.value = row.id;
+  entryDeleteOpen.value = true;
+}
+
+async function removeEntry() {
+  try {
+    creditor.value = (await axios.delete(`creditors/${route.params.id}/entries/${entryDeleteId.value}`)).data;
+    alerts.success(`Line removed · we owe him ${formatMoney(creditor.value.owed)}`);
+  } catch (error) {
+    alerts.fail(error);
+  }
+}
+
 async function addEntry() {
   if (!(await entryRef.value.validate())) return;
   addingEntry.value = true;
   try {
-    creditor.value = (await axios.post(`creditors/${route.params.id}/entries`, {
+    const payload = {
       amount: Number(entryForm.value.amount) || 0,
       clientstore_id: authStore.clientstoreId || undefined,
       note: entryForm.value.note.trim(),
-    })).data;
+    };
+    creditor.value = entryId.value
+      ? (await axios.put(`creditors/${route.params.id}/entries/${entryId.value}`, payload)).data
+      : (await axios.post(`creditors/${route.params.id}/entries`, payload)).data;
     entryOpen.value = false;
-    alerts.success(`${formatMoney(entryForm.value.amount)} added · we owe him ${formatMoney(creditor.value.owed)}`);
+    alerts.success(`${entryId.value ? 'Line changed' : `${formatMoney(payload.amount)} added`} · we owe him ${formatMoney(creditor.value.owed)}`);
   } catch (error) {
     entryAlerts.fail(error);
   } finally {
@@ -219,6 +248,7 @@ onMounted(load);
               <th class="text-left">WHAT IT WAS</th>
               <th class="text-left">SHOP</th>
               <th class="text-right">AMOUNT</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -230,8 +260,14 @@ onMounted(load);
               </td>
               <td>{{ row.shop || '-' }}</td>
               <td class="text-right font-weight-bold text-error">{{ formatMoney(row.amount) }}</td>
+              <td class="text-no-wrap text-right">
+                <template v-if="row.type !== 'Item' && can('creditors_edit', 'Creditors')">
+                  <v-btn icon="mdi-pencil-outline" color="#EFF0F1" size="x-small" class="me-1" title="Change" @click="editEntry(row)"></v-btn>
+                  <v-btn icon="mdi-delete-outline" color="#FFEFEF" size="x-small" class="text-error" title="Remove" @click="openEntryDelete(row)"></v-btn>
+                </template>
+              </td>
             </tr>
-            <tr v-if="!creditor.entry_rows.length"><td colspan="4" class="text-center text-lightText py-6">Nothing taken from him yet</td></tr>
+            <tr v-if="!creditor.entry_rows.length"><td colspan="5" class="text-center text-lightText py-6">Nothing taken from him yet</td></tr>
           </tbody>
         </v-table>
       </UiParentCard>
@@ -357,8 +393,10 @@ onMounted(load);
     </v-row>
   </RightDrawer>
 
-  <RightDrawer ref="entryRef" v-model="entryOpen" title="Add What We Owe" icon="mdi-package-variant-closed"
-    :subtitle="creditor ? creditor.name : ''" submit-label="Add to Khata" :loading="addingEntry"
+  <DeleteDialog v-model="entryDeleteOpen" message="Remove this line?" hint="What we owe him goes down by that amount." @confirm="removeEntry" />
+
+  <RightDrawer ref="entryRef" v-model="entryOpen" :title="entryId ? 'Change What We Owe' : 'Add What We Owe'" icon="mdi-package-variant-closed"
+    :subtitle="creditor ? creditor.name : ''" :submit-label="entryId ? 'Save Changes' : 'Add to Khata'" :loading="addingEntry"
     :show-error-alert="entryAlerts.showErrorAlert.value" :error-text="entryAlerts.errorText.value"
     @submit="addEntry" @close-error="entryAlerts.clear()">
     <v-row>
