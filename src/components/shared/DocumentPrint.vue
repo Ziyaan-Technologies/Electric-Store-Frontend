@@ -153,7 +153,7 @@ function amount(value?: number | string | null) {
     <div class="print-receipt__line" />
     <table class="print-receipt__items">
       <thead>
-        <tr v-if="showPrices"><th class="text-left">Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
+        <tr v-if="showPrices"><th class="text-left">Item</th><th>Qty</th><th>Price</th><th>Amount</th></tr>
         <tr v-else><th class="text-left">Item</th><th>Qty</th></tr>
       </thead>
       <tbody>
@@ -235,7 +235,7 @@ function amount(value?: number | string | null) {
           <th class="text-left">Item</th>
           <th style="width: 70px">Qty</th>
           <template v-if="showPrices">
-            <th style="width: 110px">Rate</th>
+            <th style="width: 110px">Price</th>
             <th style="width: 110px">Discount</th>
             <th style="width: 120px">Amount</th>
           </template>
@@ -407,15 +407,15 @@ function amount(value?: number | string | null) {
 }
 
 .print-a4__logo {
-  width: 108px;
-  height: 108px;
+  width: 170px;
+  height: 170px;
   object-fit: contain;
   margin: 0 14px;
   flex-shrink: 0;
 }
 
 .print-a4__business {
-  font-size: 22px;
+  font-size: 16px;
   font-weight: 700;
   color: #0f3460;
 }
@@ -431,7 +431,7 @@ function amount(value?: number | string | null) {
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 22px;
+  gap: 40px;
 }
 
 .print-a4__brands-row img {
@@ -473,9 +473,9 @@ function amount(value?: number | string | null) {
 }
 
 .print-a4__title {
-  font-size: 24px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
   color: #0b2545;
 }
 
@@ -538,6 +538,8 @@ function amount(value?: number | string | null) {
   text-align: right;
   border-bottom: 1px solid #eef1f5;
   vertical-align: top;
+  color: #000;
+  font-weight: 600;
 }
 
 .print-a4__table th:first-child,
@@ -558,6 +560,7 @@ function amount(value?: number | string | null) {
 
 .print-a4__totals {
   width: 280px;
+  color: #000;
 }
 
 .print-a4__returned {
@@ -576,6 +579,7 @@ function amount(value?: number | string | null) {
 
 .print-a4__grand {
   margin: 6px 0;
+  font-weight: 800;
   padding: 8px 10px !important;
   border-radius: 6px;
   background: #0b2545;
