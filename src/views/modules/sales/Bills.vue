@@ -8,6 +8,7 @@ import DatePickerRange from '@/components/shared/DatePickerRange.vue';
 import ListToolbar from '@/components/shared/ListToolbar.vue';
 import TableBottom from '@/components/shared/TableBottom.vue';
 import PrintDialog from '@/components/shared/PrintDialog.vue';
+import DeleteDialog from '@/components/shared/DeleteDialog.vue';
 import StatusChip from '@/components/shared/StatusChip.vue';
 import ReturnDialog from './ReturnDialog.vue';
 import { useListPage } from '@/composables/useListPage';
@@ -100,6 +101,24 @@ function onReturned(result: any) {
 }
 
 onMounted(() => lookups.loadCounters().catch((error) => alerts.fail(error)));
+const deleteOpen = ref(false);
+const deleteId = ref<number | null>(null);
+
+function openDelete(item: any) {
+  deleteId.value = item.id;
+  deleteOpen.value = true;
+}
+
+async function removeBill() {
+  try {
+    const response = await axios.delete(`sales/${deleteId.value}`);
+    alerts.success(response.data?.message || 'Bill deleted');
+    list.refresh();
+  } catch (error) {
+    alerts.fail(error);
+  }
+}
+
 </script>
 
 <template>
@@ -166,6 +185,10 @@ onMounted(() => lookups.loadCounters().catch((error) => alerts.fail(error)));
             <div class="d-flex align-center ga-1">
               <v-btn icon="mdi-eye-outline" color="#EFF0F1" size="small" @click="router.push(`/bills/${item.id}`)" />
               <v-btn icon="mdi-printer" color="#EFF0F1" size="small" title="Print" @click="print(item)" />
+              <v-btn v-if="can('sales_edit', 'Sales') && item.status === 'Completed'" icon="mdi-pencil-outline" color="#EFF0F1" size="small" title="Change this bill"
+                @click="router.push(`/pos?bill=${item.id}`)" />
+              <v-btn v-if="can('sales_delete', 'Sales') && item.status === 'Completed'" icon="mdi-delete-outline" color="#FFEFEF" size="small" class="text-error"
+                title="Delete this bill" @click="openDelete(item)" />
               <v-btn v-if="can('pos_return', 'POS') && item.status !== 'Returned'" icon="mdi-keyboard-return" color="#FFEFEF" size="small" class="text-error" title="Return" @click="openReturn(item)" />
             </div>
           </template>
@@ -180,4 +203,6 @@ onMounted(() => lookups.loadCounters().catch((error) => alerts.fail(error)));
 
   <PrintDialog v-model="printOpen" :doc="printDoc" :kind="printKind" />
   <ReturnDialog v-model="returnOpen" :sale-id="returnSaleId" @returned="onReturned" />
+
+  <DeleteDialog v-model="deleteOpen" message="Delete this bill?" hint="The stock comes back and the money leaves the counter. A bill with a return or a payment on it, or one from a counter that is already closed, cannot be deleted." @confirm="removeBill" />
 </template>

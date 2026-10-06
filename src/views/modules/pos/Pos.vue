@@ -6,6 +6,7 @@ import UiParentCard from '@/components/shared/UiParentCard.vue';
 import PrintDialog from '@/components/shared/PrintDialog.vue';
 import CategoryDialog from './CategoryDialog.vue';
 import QuickItemDialog from './QuickItemDialog.vue';
+import ChargeDialog from './ChargeDialog.vue';
 import BillDiscountDialog from './BillDiscountDialog.vue';
 import PaymentDialog from './PaymentDialog.vue';
 import QuotationDialog from './QuotationDialog.vue';
@@ -48,11 +49,13 @@ const debtors = ref<any[]>([]);
 const debtorSearch = ref('');
 const loadingDebtors = ref(false);
 const quotation = ref<any>(null);
+const editingBill = ref<any>(null);
 
 const categoryDialog = ref(false);
 const activeCategory = ref<any>(null);
 const onlyProductId = ref<number | null>(null);
 const quickDialog = ref(false);
+const chargeDialog = ref(false);
 const discountDialog = ref(false);
 const paymentDialog = ref(false);
 const quotationDialog = ref(false);
@@ -182,12 +185,45 @@ async function loadQuotation(id: string) {
   }
 }
 
+async function loadBill(id: string) {
+  try {
+    const data = (await axios.get(`sales/${id}`)).data;
+    editingBill.value = data;
+    customerName.value = data.customer_name || '';
+    customerPhone.value = data.customer_phone || '';
+    debtor.value = data.debtor || null;
+    discounts.value = (data.bill_discounts || []).map((discount: any) => ({ code: discount.code, type: discount.type, value: discount.value }));
+    lines.value = data.items.map((item: any) => ({
+      key: `b-${item.id}`,
+      product_id: item.product_id,
+      variant_id: item.variant_id,
+      product_name: item.product_name,
+      variant_name: item.variant_name,
+      image_url: item.image_url,
+      quantity: item.quantity,
+      original_price: item.original_price,
+      unit_price: item.unit_price,
+      cost_price: item.cost_price,
+      discount_type: item.discount_type,
+      discount_value: item.discount_value,
+      bill_discount_code: item.bill_discount_code,
+      is_outside: item.is_outside,
+      is_charge: item.is_charge,
+      creditor_id: item.creditor_id,
+      creditor_name: item.creditor?.name || '',
+    }));
+  } catch (error) {
+    alerts.fail(error);
+  }
+}
+
 async function load() {
   loading.value = true;
   alerts.clear();
   try {
     await Promise.all([loadCatalog(), loadSession()]);
     if (route.query.quotation) await loadQuotation(String(route.query.quotation));
+    if (route.query.bill) await loadBill(String(route.query.bill));
   } catch (error) {
     alerts.fail(error);
   } finally {
@@ -323,6 +359,26 @@ function addOutside(item: { product_name: string; quantity: number; unit_price: 
   });
 }
 
+function addCharge(item: { product_name: string; unit_price: number }) {
+  lines.value.push({
+    key: `l-${++lineSeq}`,
+    product_id: null,
+    variant_id: null,
+    product_name: item.product_name,
+    variant_name: '',
+    image_url: null,
+    quantity: 1,
+    original_price: item.unit_price,
+    unit_price: item.unit_price,
+    cost_price: null,
+    discount_type: 'percent',
+    discount_value: 0,
+    bill_discount_code: null,
+    is_outside: false,
+    is_charge: true,
+  });
+}
+
 function setQuantity(line: BillLine, value: any) {
   const number = Math.max(1, Math.floor(Number(value) || 1));
   const limit = stockLeft(line) - ((inCart.value[line.variant_id || 0] || 0) - Number(line.quantity));
@@ -381,7 +437,8 @@ function clearBill() {
   customerPhone.value = '';
   debtor.value = null;
   quotation.value = null;
-  if (route.query.quotation) router.replace('/pos');
+  editingBill.value = null;
+  if (route.query.quotation || route.query.bill) router.replace('/pos');
 }
 
 function payload() {
@@ -404,13 +461,16 @@ async function confirmPayment(payment: { payment_method: string; amount_received
   saving.value = true;
   saveError.value = '';
   try {
-    const sale = (await axios.post('sales', { ...payload(), ...payment, session_id: session.value.id, quotation_id: quotation.value?.id })).data;
+    const sale = editingBill.value
+      ? (await axios.put(`sales/${editingBill.value.id}`, { ...payload(), ...payment })).data
+      : (await axios.post('sales', { ...payload(), ...payment, session_id: session.value.id, quotation_id: quotation.value?.id })).data;
+    const changed = !!editingBill.value;
     paymentDialog.value = false;
     clearBill();
     printDoc.value = sale;
     printKind.value = 'bill';
     printDialog.value = true;
-    alerts.success(`Bill ${sale.bill_number} saved`);
+    alerts.success(`Bill ${sale.bill_number} ${changed ? 'changed' : 'saved'}`);
     await Promise.all([loadCatalog(), loadSession()]);
     pending.refresh();
   } catch (error) {
@@ -657,7 +717,9 @@ onMounted(async () => {
               </v-autocomplete>
             </div>
             <v-chip v-if="quotation" color="primary" variant="tonal" size="small" prepend-icon="mdi-file-document-edit-outline">From {{ quotation.quotation_number }}</v-chip>
-            <v-btn variant="text" color="error" size="small" prepend-icon="mdi-delete-sweep-outline" :disabled="!lines.length && !quotation" @click="clearBill">Clear</v-btn>
+            <v-chip v-if="editingBill" color="warning" variant="flat" size="small" prepend-icon="mdi-receipt-text-edit-outline">Changing {{ editingBill.bill_number }}</v-chip>
+            <v-btn variant="text" color="primary" size="small" density="comfortable" prepend-icon="mdi-cash-plus" class="text-none" @click="chargeDialog = true">Charge</v-btn>
+            <v-btn variant="text" color="error" size="small" density="comfortable" prepend-icon="mdi-delete-sweep-outline" class="text-none" :disabled="!lines.length && !quotation" @click="clearBill">Clear</v-btn>
           </div>
 
           <div class="bill-panel__customer">
@@ -682,7 +744,7 @@ onMounted(async () => {
                 </v-avatar>
                 <div class="flex-grow-1 overflow-hidden">
                   <div class="bill-line__name">{{ line.product_name }}</div>
-                  <div class="text-caption text-lightText">{{ line.is_outside ? (line.creditor_name ? `From ${line.creditor_name}` : 'From another shopkeeper') : line.variant_name }}</div>
+                  <div class="text-caption text-lightText">{{ line.is_charge ? 'Charge · not counted in profit' : line.is_outside ? (line.creditor_name ? `From ${line.creditor_name}` : 'From another shopkeeper') : line.variant_name }}</div>
                   <div class="d-flex flex-wrap ga-1 mt-1">
                     <v-chip v-if="line.bill_discount_code" size="x-small" color="primary" variant="tonal">
                       {{ line.bill_discount_code }} · {{ discountLabel(discounts.find((discount) => discount.code === line.bill_discount_code)!) }}
@@ -752,10 +814,10 @@ onMounted(async () => {
           </div>
 
           <div class="bill-panel__actions">
-            <v-btn v-if="can('quotations_create', 'Quotation')" variant="outlined" color="primary" size="large" prepend-icon="mdi-file-document-edit-outline"
+            <v-btn v-if="can('quotations_create', 'Quotation') && !editingBill" variant="outlined" color="primary" size="large" prepend-icon="mdi-file-document-edit-outline"
               :disabled="!lines.length || !!quotation" @click="startQuotation">Quotation</v-btn>
             <v-btn color="primary" variant="flat" size="large" prepend-icon="mdi-receipt-text-check-outline" :disabled="!lines.length" class="flex-grow-1" @click="startBill">
-              Bill · {{ formatMoney(bill.total) }}
+              {{ editingBill ? 'Save Changes' : 'Bill' }} · {{ formatMoney(bill.total) }}
             </v-btn>
           </div>
         </div>
@@ -766,6 +828,7 @@ onMounted(async () => {
   <CategoryDialog v-model="categoryDialog" :category="activeCategory" :brands="catalog.brands" :products="catalog.products" :brand-id="brandId" :in-cart="inCart"
     :only-product-id="onlyProductId" @add="addRows" />
   <QuickItemDialog v-model="quickDialog" @add="addOutside" />
+  <ChargeDialog v-model="chargeDialog" @add="addCharge" />
   <BillDiscountDialog v-model="discountDialog" :lines="uncovered" @apply="applyBillDiscount" />
   <PaymentDialog v-model="paymentDialog" :total="bill.total" :debtor="debtor" :can-pay-later="can('pos_pay_later', 'POS')" :saving="saving" :error-text="saveError"
     @confirm="confirmPayment" @close-error="saveError = ''" />

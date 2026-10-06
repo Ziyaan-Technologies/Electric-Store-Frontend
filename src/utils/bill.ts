@@ -18,6 +18,7 @@ export interface BillLine {
     discount_value: number;
     bill_discount_code?: string | null;
     is_outside?: boolean;
+    is_charge?: boolean;
     creditor_id?: number | null;
     creditor_name?: string;
 }

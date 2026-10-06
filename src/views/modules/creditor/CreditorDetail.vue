@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import UiParentCard from '@/components/shared/UiParentCard.vue';
 import RightDrawer from '@/components/shared/RightDrawer.vue';
+import DeleteDialog from '@/components/shared/DeleteDialog.vue';
 import { useAlerts } from '@/composables/useAlerts';
 import { useAuthStore } from '@/stores/auth';
 import { can } from '@/utils/permissions';
@@ -22,6 +23,9 @@ const payOpen = ref(false);
 const payRef = ref<any>(null);
 const paying = ref(false);
 const payForm = ref<any>({ amount: '', method: 'Cash', note: '' });
+const payingId = ref<number | null>(null);
+const deleteOpen = ref(false);
+const deleteId = ref<number | null>(null);
 
 const entryOpen = ref(false);
 const entryRef = ref<any>(null);
@@ -48,22 +52,48 @@ async function load() {
 }
 
 function openPay() {
+  payingId.value = null;
   payForm.value = { amount: owed.value > 0 ? owed.value : '', method: 'Cash', note: '' };
   drawerAlerts.clear();
   payOpen.value = true;
   payRef.value?.resetValidation();
 }
 
+function editPay(payment: any) {
+  payingId.value = payment.id;
+  payForm.value = { amount: payment.amount, method: payment.method, note: payment.note || '' };
+  drawerAlerts.clear();
+  payOpen.value = true;
+  payRef.value?.resetValidation();
+}
+
+function openDelete(payment: any) {
+  deleteId.value = payment.id;
+  deleteOpen.value = true;
+}
+
+async function removePay() {
+  try {
+    creditor.value = (await axios.delete(`creditors/${route.params.id}/payments/${deleteId.value}`)).data;
+    alerts.success(`Payment removed · we owe him ${formatMoney(creditor.value.owed)}`);
+  } catch (error) {
+    alerts.fail(error);
+  }
+}
+
 async function pay() {
   if (!(await payRef.value.validate())) return;
   paying.value = true;
   try {
-    creditor.value = (await axios.post(`creditors/${route.params.id}/payments`, {
+    const payload = {
       amount: Number(payForm.value.amount) || 0,
       method: payForm.value.method,
       clientstore_id: authStore.clientstoreId || undefined,
       note: payForm.value.note?.trim() || '',
-    })).data;
+    };
+    creditor.value = payingId.value
+      ? (await axios.put(`creditors/${route.params.id}/payments/${payingId.value}`, payload)).data
+      : (await axios.post(`creditors/${route.params.id}/payments`, payload)).data;
     payOpen.value = false;
     alerts.success(`${formatMoney(payForm.value.amount)} paid · ${creditor.value.balance > 0 ? `still owing ${formatMoney(creditor.value.balance)}` : creditor.value.advance > 0 ? `advance with him is now ${formatMoney(creditor.value.advance)}` : 'his khata is clear'}`);
   } catch (error) {
@@ -252,6 +282,7 @@ onMounted(load);
               <th class="text-left">PAID FROM</th>
               <th class="text-left">BY</th>
               <th class="text-right">AMOUNT</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -266,17 +297,25 @@ onMounted(load);
                 <div v-if="payment.note" class="text-caption text-lightText">{{ payment.note }}</div>
               </td>
               <td class="text-right font-weight-bold text-success">{{ formatMoney(payment.amount) }}</td>
+              <td class="text-no-wrap text-right">
+                <template v-if="can('creditors_payment', 'Creditors')">
+                  <v-btn icon="mdi-pencil-outline" color="#EFF0F1" size="x-small" class="me-1" title="Change" @click="editPay(payment)"></v-btn>
+                  <v-btn icon="mdi-delete-outline" color="#FFEFEF" size="x-small" class="text-error" title="Remove" @click="openDelete(payment)"></v-btn>
+                </template>
+              </td>
             </tr>
-            <tr v-if="!creditor.payments.length"><td colspan="4" class="text-center text-lightText py-6">No payments yet</td></tr>
+            <tr v-if="!creditor.payments.length"><td colspan="5" class="text-center text-lightText py-6">No payments yet</td></tr>
           </tbody>
         </v-table>
       </UiParentCard>
     </v-col>
   </v-row>
 
-  <RightDrawer ref="payRef" v-model="payOpen" title="Pay Him" icon="mdi-cash-fast"
+  <DeleteDialog v-model="deleteOpen" message="Remove this payment?" hint="What we owe him goes back up, and the cash returns to the counter it came out of. A payment from a closed counter cannot be removed." @confirm="removePay" />
+
+  <RightDrawer ref="payRef" v-model="payOpen" :title="payingId ? 'Change Payment' : 'Pay Him'" icon="mdi-cash-fast"
     :subtitle="creditor ? `${creditor.name} · ${creditor.balance > 0 ? `we owe ${formatMoney(creditor.balance)}` : `advance ${formatMoney(creditor.advance)}`}` : ''"
-    submit-label="Save Payment" :loading="paying"
+    :submit-label="payingId ? 'Save Changes' : 'Save Payment'" :loading="paying"
     :show-error-alert="drawerAlerts.showErrorAlert.value" :error-text="drawerAlerts.errorText.value"
     @submit="pay" @close-error="drawerAlerts.clear()">
     <v-row>
