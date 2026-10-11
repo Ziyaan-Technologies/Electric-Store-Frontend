@@ -88,6 +88,16 @@ export function formatNumber(value?: number | string | null, digits = 2) {
     return number.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: digits });
 }
 
+/** the short word for a unit: pcs, kg or ft */
+export function unitLabel(unit?: string | null) {
+    return unit === 'Kg' ? 'kg' : unit === 'Foot' ? 'ft' : 'pcs';
+}
+
+/** a quantity with its unit, like "2.5 kg" */
+export function formatQuantity(value?: number | string | null, unit?: string | null) {
+    return `${formatNumber(value, 3)} ${unitLabel(unit)}`;
+}
+
 export function currency() {
     try {
         return JSON.parse(localStorage.getItem('currencyCode') || 'null') || '';

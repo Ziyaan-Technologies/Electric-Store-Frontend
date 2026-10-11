@@ -9,7 +9,7 @@ import ImageField from '@/components/shared/ImageField.vue';
 import { useAlerts } from '@/composables/useAlerts';
 import { useLookups } from '@/composables/useLookups';
 import { useAuthStore } from '@/stores/auth';
-import { formatMoney, formatNumber, rules, uploadImage } from '@/utils/api';
+import { formatMoney, formatNumber, rules, uploadImage, unitLabel } from '@/utils/api';
 
 const route = useRoute();
 const router = useRouter();
@@ -27,9 +27,16 @@ const form = ref<any>({
   name: '',
   category_id: null,
   brand_id: null,
+  unit: 'Piece',
   is_active: true,
   image_url: '',
 });
+
+const units = [
+  { value: 'Piece', title: 'Piece' },
+  { value: 'Kg', title: 'Kg' },
+  { value: 'Foot', title: 'Feet' },
+];
 const variants = ref<any[]>([]);
 
 function blankVariant() {
@@ -114,6 +121,7 @@ onMounted(async () => {
         name: product.name,
         category_id: product.category_id,
         brand_id: product.brand_id || null,
+        unit: product.unit || 'Piece',
         is_active: product.is_active,
         image_url: product.image_url || '',
       };
@@ -158,6 +166,11 @@ onMounted(async () => {
                   <v-label class="text-subtitle-1 pb-2 text-lightText">Brand</v-label>
                   <v-autocomplete v-model="form.brand_id" :items="lookups.brands.value" item-title="name" item-value="id" clearable placeholder="No brand" hide-details />
                 </v-col>
+                <v-col cols="12" sm="6">
+                  <v-label class="text-subtitle-1 pb-2 text-lightText">Sold by</v-label>
+                  <v-select v-model="form.unit" :items="units" item-title="title" item-value="value" hide-details />
+                  <div class="text-caption text-lightText mt-1">Kg and Feet take part amounts like 2.5; Piece takes whole numbers.</div>
+                </v-col>
               </v-row>
             </v-col>
             <v-col cols="12" lg="4">
@@ -199,7 +212,7 @@ onMounted(async () => {
                   <td><v-text-field v-model.number="variant.cost_price" type="number" min="0" density="compact" hide-details /></td>
                   <td><v-text-field v-model.number="variant.sale_price" type="number" min="0" density="compact" hide-details /></td>
                   <td>
-                    <v-text-field v-model.number="variant.stock" type="number" min="0" density="compact" hide-details />
+                    <v-text-field v-model.number="variant.stock" type="number" min="0" :step="form.unit === 'Piece' ? 1 : 0.5" density="compact" hide-details :suffix="unitLabel(form.unit)" />
                   </td>
                   <td><v-text-field v-model.number="variant.reorder_level" type="number" min="0" density="compact" hide-details /></td>
                   <td>

@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import axios from 'axios';
 import RightDrawer from '@/components/shared/RightDrawer.vue';
 import { useAlerts } from '@/composables/useAlerts';
-import { formatMoney, formatNumber } from '@/utils/api';
+import { formatMoney, formatNumber, formatQuantity } from '@/utils/api';
 import { round } from '@/utils/bill';
 
 const props = defineProps<{ modelValue: boolean; product: any }>();
@@ -91,7 +91,7 @@ watch(() => props.modelValue, (open) => {
       <v-col v-if="chosen" cols="12">
         <div class="stock-preview">
           <div><span>Stock now</span><strong>{{ formatNumber(chosen.stock, 3) }}</strong></div>
-          <div><span>After this</span><strong class="text-primary">{{ formatNumber(chosen.stock + quantity, 3) }}</strong></div>
+          <div><span>After this</span><strong class="text-primary">{{ formatQuantity(chosen.stock + quantity, product?.unit) }}</strong></div>
           <div><span>Cost now</span><strong>{{ formatMoney(chosen.cost_price) }}</strong></div>
           <div><span>Average cost after</span><strong class="text-primary">{{ newCost === null ? '-' : formatMoney(newCost) }}</strong></div>
         </div>

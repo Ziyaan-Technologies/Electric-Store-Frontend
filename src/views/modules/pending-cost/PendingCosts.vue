@@ -10,7 +10,7 @@ import { useAlerts } from '@/composables/useAlerts';
 import { usePendingStore } from '@/stores/pending';
 import { useAuthStore } from '@/stores/auth';
 import { can } from '@/utils/permissions';
-import { formatDateTime, formatMoney, formatNumber } from '@/utils/api';
+import { formatDateTime, formatMoney, formatNumber, formatQuantity } from '@/utils/api';
 import type { Header } from '@/models/type-interfaces';
 
 const alerts = useAlerts();
@@ -107,7 +107,7 @@ loadCreditors();
             <div>{{ item.counter?.name }}</div>
             <div class="text-caption text-lightText">{{ item.cashier?.full_name }} · {{ item.session_status === 'Open' ? 'counter open' : 'counter closed' }}</div>
           </template>
-          <template v-slot:item.quantity="{ item }">{{ formatNumber(item.quantity, 3) }} × {{ formatMoney(item.unit_price) }}</template>
+          <template v-slot:item.quantity="{ item }">{{ formatQuantity(item.quantity, item.unit) }} × {{ formatMoney(item.unit_price) }}</template>
           <template v-slot:item.total="{ item }"><span class="font-weight-semibold">{{ formatMoney(item.total) }}</span></template>
           <template v-slot:item.creditor="{ item }">
             <v-autocomplete v-if="item.cost_price === null && can('pending_costs_edit', 'Pending Cost')"

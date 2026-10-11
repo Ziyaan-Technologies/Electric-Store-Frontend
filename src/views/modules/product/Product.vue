@@ -14,7 +14,7 @@ import { useListPage } from '@/composables/useListPage';
 import { useAlerts } from '@/composables/useAlerts';
 import { useLookups } from '@/composables/useLookups';
 import { can } from '@/utils/permissions';
-import { formatMoney, formatNumber } from '@/utils/api';
+import { formatMoney, formatNumber, formatQuantity } from '@/utils/api';
 import type { Header } from '@/models/type-interfaces';
 
 const router = useRouter();
@@ -167,7 +167,7 @@ onMounted(async () => {
           </template>
           <template v-slot:item.price="{ item }">{{ priceRange(item.variants) }}</template>
           <template v-slot:item.stock_total="{ item }">
-            <div>{{ formatNumber(item.stock_total, 3) }}</div>
+            <div>{{ formatQuantity(item.stock_total, item.unit) }}</div>
             <div v-if="lowCount(item.variants)" class="text-caption text-error">{{ lowCount(item.variants) }} size{{ lowCount(item.variants) === 1 ? '' : 's' }} low</div>
           </template>
           <template v-slot:item.is_active="{ item }"><ActiveIcon :active="item.is_active" /></template>

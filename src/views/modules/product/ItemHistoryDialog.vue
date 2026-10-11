@@ -3,7 +3,7 @@ import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { useAlerts } from '@/composables/useAlerts';
-import { formatDateTime, formatMoney, formatNumber } from '@/utils/api';
+import { formatDateTime, formatMoney, formatNumber, formatQuantity } from '@/utils/api';
 
 const props = defineProps<{ modelValue: boolean; product: any }>();
 const emit = defineEmits<{ (e: 'update:modelValue', value: boolean): void }>();
@@ -95,8 +95,8 @@ watch(() => props.modelValue, (open) => {
                 <td class="text-no-wrap">{{ formatDateTime(row.created_at) }}</td>
                 <td>{{ row.variant_name }}</td>
                 <td class="text-right">
-                  {{ formatNumber(row.quantity, 3) }}
-                  <div v-if="row.returned_quantity" class="text-caption text-error">{{ formatNumber(row.returned_quantity, 3) }} returned</div>
+                  {{ formatQuantity(row.quantity, product?.unit) }}
+                  <div v-if="row.returned_quantity" class="text-caption text-error">{{ formatQuantity(row.returned_quantity, product?.unit) }} returned</div>
                 </td>
                 <td class="text-right">{{ formatMoney(row.price) }}</td>
                 <td class="text-right">{{ formatMoney(row.amount) }}</td>

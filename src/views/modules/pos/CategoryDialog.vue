@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { formatMoney, formatNumber } from '@/utils/api';
+import { formatMoney, formatNumber, formatQuantity } from '@/utils/api';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -135,7 +135,7 @@ watch(() => props.modelValue, (open) => {
               <span class="font-weight-semibold">{{ variant.name }}</span>
               <span class="text-right font-weight-bold">{{ formatMoney(variant.sale_price) }}</span>
               <span class="text-right" :class="variant.stock <= variant.reorder_level ? 'text-error font-weight-bold' : ''">
-                {{ formatNumber(available(variant), 3) }}<span v-if="inCart[variant.id]" class="text-caption text-lightText"> ({{ inCart[variant.id] }} on bill)</span>
+                {{ formatQuantity(available(variant), product.unit) }}<span v-if="inCart[variant.id]" class="text-caption text-lightText"> ({{ inCart[variant.id] }} on bill)</span>
               </span>
               <div class="qty-control">
                 <v-btn icon="mdi-minus" size="x-small" variant="tonal" color="primary" :disabled="!(quantities[variant.id] > 0)" @click="step(variant, -1)" />

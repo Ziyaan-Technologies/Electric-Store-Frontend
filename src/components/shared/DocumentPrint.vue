@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { discountLabel } from '@/utils/bill';
-import { formatDate, formatDateTime, formatNumber } from '@/utils/api';
+import { formatDate, formatDateTime, formatNumber, formatQuantity } from '@/utils/api';
 import type { Paper } from '@/utils/print';
 
 const props = defineProps<{
@@ -109,7 +109,7 @@ function amount(value?: number | string | null) {
             <div class="font-weight-bold">{{ item.product_name }}</div>
             <div class="print-a4__muted">{{ item.variant_name }}</div>
           </td>
-          <td>{{ formatNumber(item.quantity, 3) }}</td>
+          <td>{{ formatQuantity(item.quantity, item.unit) }}</td>
           <td class="font-weight-bold">{{ amount(item.refund_amount) }}</td>
         </tr>
       </tbody>
@@ -158,10 +158,10 @@ function amount(value?: number | string | null) {
       </thead>
       <tbody>
         <template v-for="item in doc.items" :key="item.id">
-          <tr><td :colspan="showPrices ? 4 : 1" class="font-weight-bold text-left">{{ item.product_name }} {{ item.variant_name }}</td><td v-if="!showPrices">{{ formatNumber(item.quantity, 3) }}</td></tr>
+          <tr><td :colspan="showPrices ? 4 : 1" class="font-weight-bold text-left">{{ item.product_name }} {{ item.variant_name }}</td><td v-if="!showPrices">{{ formatQuantity(item.quantity, item.unit) }}</td></tr>
           <tr v-if="showPrices">
             <td></td>
-            <td>{{ formatNumber(item.quantity, 3) }}</td>
+            <td>{{ formatQuantity(item.quantity, item.unit) }}</td>
             <td>{{ amount(item.unit_price) }}</td>
             <td>{{ amount(item.gross) }}</td>
           </tr>
@@ -247,9 +247,9 @@ function amount(value?: number | string | null) {
           <td class="text-left">
             <div class="font-weight-bold">{{ item.product_name }}</div>
             <div class="print-a4__muted">{{ item.variant_name }}</div>
-            <div v-if="item.returned_quantity > 0" class="print-a4__returned">Returned {{ formatNumber(item.returned_quantity, 3) }}</div>
+            <div v-if="item.returned_quantity > 0" class="print-a4__returned">Returned {{ formatQuantity(item.returned_quantity, item.unit) }}</div>
           </td>
-          <td>{{ formatNumber(item.quantity, 3) }}</td>
+          <td>{{ formatQuantity(item.quantity, item.unit) }}</td>
           <template v-if="showPrices">
             <td>{{ amount(item.unit_price) }}</td>
             <td>{{ item.item_discount + item.bill_discount > 0 ? `-${amount(item.item_discount + item.bill_discount)}` : '-' }}</td>

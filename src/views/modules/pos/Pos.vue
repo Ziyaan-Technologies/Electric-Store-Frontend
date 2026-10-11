@@ -16,7 +16,7 @@ import { useAuthStore } from '@/stores/auth';
 import { usePendingStore } from '@/stores/pending';
 import { useAlerts } from '@/composables/useAlerts';
 import { can } from '@/utils/permissions';
-import { apiError, formatDate, formatDateTime, formatMoney, formatNumber } from '@/utils/api';
+import { apiError, formatDate, formatDateTime, formatMoney, formatNumber, formatQuantity, unitLabel } from '@/utils/api';
 import { activeDiscounts, calculateBill, discountLabel, nextDiscountCode, type BillDiscount, type BillLine, type DiscountType } from '@/utils/bill';
 
 const route = useRoute();
@@ -175,6 +175,7 @@ async function loadQuotation(id: string) {
       original_price: item.original_price,
       unit_price: item.unit_price,
       cost_price: item.cost_price,
+      unit: item.unit || 'Piece',
       discount_type: item.discount_type,
       discount_value: item.discount_value,
       bill_discount_code: item.bill_discount_code,
@@ -204,6 +205,7 @@ async function loadBill(id: string) {
       original_price: item.original_price,
       unit_price: item.unit_price,
       cost_price: item.cost_price,
+      unit: item.unit || 'Piece',
       discount_type: item.discount_type,
       discount_value: item.discount_value,
       bill_discount_code: item.bill_discount_code,
@@ -298,6 +300,7 @@ function addVariant(product: any, variant: any, quantity: number) {
     original_price: variant.sale_price,
     unit_price: variant.sale_price,
     cost_price: variant.cost_price,
+    unit: product.unit || 'Piece',
     stock: variant.stock,
     discount_type: 'percent',
     discount_value: 0,
@@ -353,6 +356,7 @@ function addOutside(item: { product_name: string; quantity: number; unit_price: 
     discount_type: 'percent',
     discount_value: 0,
     bill_discount_code: null,
+    unit: 'Piece',
     is_outside: true,
     creditor_id: item.creditor_id,
     creditor_name: item.creditor_name,
@@ -374,17 +378,30 @@ function addCharge(item: { product_name: string; unit_price: number }) {
     discount_type: 'percent',
     discount_value: 0,
     bill_discount_code: null,
+    unit: 'Piece',
     is_outside: false,
     is_charge: true,
   });
 }
 
+function stepFor(line: BillLine) {
+  return line.unit && line.unit !== 'Piece' ? 0.5 : 1;
+}
+
+function cleanQuantity(line: BillLine, value: any) {
+  const asked = Number(value) || 0;
+  if (!line.unit || line.unit === 'Piece') {
+    return Math.max(1, Math.floor(asked));
+  }
+  return Math.max(0.001, Math.round(asked * 1000) / 1000);
+}
+
 function setQuantity(line: BillLine, value: any) {
-  const number = Math.max(1, Math.floor(Number(value) || 1));
+  const number = cleanQuantity(line, value);
   const limit = stockLeft(line) - ((inCart.value[line.variant_id || 0] || 0) - Number(line.quantity));
   if (line.variant_id && number > limit) {
-    alerts.fail(null, `Only ${limit} of ${line.product_name} ${line.variant_name} left`);
-    line.quantity = Math.max(1, limit);
+    alerts.fail(null, `Only ${formatQuantity(limit, line.unit)} of ${line.product_name} ${line.variant_name} left`);
+    line.quantity = Math.max(cleanQuantity(line, limit), 0);
     return;
   }
   line.quantity = number;
@@ -760,9 +777,10 @@ onMounted(async () => {
               </div>
               <div class="bill-line__controls">
                 <div class="qty-control">
-                  <v-btn icon="mdi-minus" size="x-small" variant="tonal" color="primary" :disabled="line.quantity <= 1" @click="setQuantity(line, Number(line.quantity) - 1)" />
-                  <input class="qty-control__input" type="number" min="1" :value="line.quantity" @change="setQuantity(line, ($event.target as HTMLInputElement).value)" />
-                  <v-btn icon="mdi-plus" size="x-small" variant="flat" color="primary" @click="setQuantity(line, Number(line.quantity) + 1)" />
+                  <v-btn icon="mdi-minus" size="x-small" variant="tonal" color="primary" :disabled="line.quantity <= stepFor(line)" @click="setQuantity(line, Number(line.quantity) - stepFor(line))" />
+                  <input class="qty-control__input" type="number" :min="stepFor(line)" :step="stepFor(line)" :value="line.quantity" @change="setQuantity(line, ($event.target as HTMLInputElement).value)" />
+                  <v-btn icon="mdi-plus" size="x-small" variant="flat" color="primary" @click="setQuantity(line, Number(line.quantity) + stepFor(line))" />
+                  <span class="qty-control__unit">{{ unitLabel(line.unit) }}</span>
                 </div>
                 <div class="price-field">
                   <span class="price-field__label">Price</span>
@@ -1185,7 +1203,14 @@ onMounted(async () => {
 }
 
 .qty-control__input {
-  width: 44px;
+  width: 56px;
+}
+
+.qty-control__unit {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgb(var(--v-theme-lightText));
+  margin-left: 2px;
 }
 
 .qty-control__input:focus,

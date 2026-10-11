@@ -13,6 +13,7 @@ export interface BillLine {
     original_price: number;
     unit_price: number;
     cost_price?: number | null;
+    unit?: string;
     stock?: number | null;
     discount_type: DiscountType;
     discount_value: number;
