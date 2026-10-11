@@ -128,7 +128,7 @@ async function remove() {
           add-label="Add New Debtor" :can-add="can('debtors_create', 'Debtors')" @search="list.onSearch" @add="openForm()">
           <template #filters>
             <div>
-              <v-select v-model="balance" :items="['Owing', 'Clear']" placeholder="All balances" clearable hide-details @update:model-value="list.reload()" />
+              <v-select v-model="balance" :items="['Owing', 'Clear', 'Advance']" placeholder="All balances" clearable hide-details @update:model-value="list.reload()" />
             </div>
           </template>
         </ListToolbar>
@@ -157,7 +157,12 @@ async function remove() {
           <template v-slot:item.phone="{ item }">{{ item.phone || '-' }}</template>
           <template v-slot:item.paid="{ item }">{{ formatMoney(item.paid) }}</template>
           <template v-slot:item.balance="{ item }">
-            <span class="font-weight-bold" :class="item.balance > 0 ? 'text-error' : 'text-success'">{{ formatMoney(item.balance) }}</span>
+            <span v-if="item.balance > 0" class="font-weight-bold text-error">{{ formatMoney(item.balance) }}</span>
+            <template v-else-if="item.balance < 0">
+              <span class="font-weight-bold text-success">{{ formatMoney(item.advance) }}</span>
+              <div class="text-caption text-lightText">Advance</div>
+            </template>
+            <span v-else class="font-weight-bold text-success">{{ formatMoney(0) }}</span>
           </template>
           <template v-slot:item.last_payment="{ item }">{{ item.last_payment ? formatDate(item.last_payment) : '-' }}</template>
           <template v-slot:item.actions="{ item }">

@@ -26,6 +26,7 @@ const deleteOpen = ref(false);
 const deleteId = ref<number | null>(null);
 
 const owed = computed(() => Number(debtor.value?.balance || 0));
+const extra = computed(() => Math.max(Number(payForm.value.amount || 0) - Math.max(owed.value, 0), 0));
 
 async function load() {
   try {
@@ -39,7 +40,7 @@ async function load() {
 
 function openPay() {
   payingId.value = null;
-  payForm.value = { amount: owed.value || '', method: 'Cash', note: '' };
+  payForm.value = { amount: owed.value > 0 ? owed.value : '', method: 'Cash', note: '' };
   drawerAlerts.clear();
   payOpen.value = true;
   payRef.value?.resetValidation();
@@ -113,12 +114,12 @@ onMounted(load);
             </div>
           </div>
           <div class="text-end">
-            <div class="text-caption text-lightText">Balance</div>
-            <div class="text-h4 font-weight-bold" :class="owed > 0 ? 'text-error' : 'text-success'">{{ formatMoney(debtor.balance) }}</div>
+            <div class="text-caption text-lightText">{{ owed < 0 ? 'Advance with us' : 'Balance' }}</div>
+            <div class="text-h4 font-weight-bold" :class="owed > 0 ? 'text-error' : 'text-success'">{{ formatMoney(owed < 0 ? debtor.advance : owed) }}</div>
           </div>
           <div class="d-flex ga-2">
             <v-btn variant="outlined" color="primary" prepend-icon="mdi-arrow-left" @click="router.push('/debtors')">Back</v-btn>
-            <v-btn v-if="can('debtors_payment', 'Debtors')" color="primary" variant="flat" prepend-icon="mdi-cash-check" :disabled="owed <= 0" @click="openPay">Receive Payment</v-btn>
+            <v-btn v-if="can('debtors_payment', 'Debtors')" color="primary" variant="flat" prepend-icon="mdi-cash-check" @click="openPay">Receive Payment</v-btn>
           </div>
         </div>
 
@@ -244,13 +245,14 @@ onMounted(load);
   <DeleteDialog v-model="deleteOpen" message="Remove this payment?" hint="The money goes back onto his khata. A payment from a counter that is already closed cannot be removed." @confirm="removePay" />
 
   <RightDrawer ref="payRef" v-model="payOpen" :title="payingId ? 'Change Payment' : 'Receive Payment'" icon="mdi-cash-check"
-    :subtitle="debtor ? `${debtor.name} · owes ${formatMoney(debtor.balance)}` : ''" :submit-label="payingId ? 'Save Changes' : 'Save Payment'" :loading="paying"
+    :subtitle="debtor ? `${debtor.name} · ${debtor.balance > 0 ? `owes ${formatMoney(debtor.balance)}` : `advance ${formatMoney(debtor.advance)}`}` : ''" :submit-label="payingId ? 'Save Changes' : 'Save Payment'" :loading="paying"
     :show-error-alert="drawerAlerts.showErrorAlert.value" :error-text="drawerAlerts.errorText.value"
     @submit="pay" @close-error="drawerAlerts.clear()">
     <v-row>
       <v-col cols="12" class="pt-4">
         <v-label class="text-subtitle-1 pb-2 text-lightText">Amount</v-label>
         <v-text-field v-model="payForm.amount" type="number" min="0" :rules="[(v: any) => Number(v) > 0 || 'Enter the amount being paid']" hide-details="auto" autofocus />
+        <div v-if="extra > 0" class="text-caption text-lightText mt-1">{{ formatMoney(extra) }} more than he owes — kept as an advance with us.</div>
       </v-col>
       <v-col cols="12">
         <v-label class="text-subtitle-1 pb-2 text-lightText">Paid by</v-label>
