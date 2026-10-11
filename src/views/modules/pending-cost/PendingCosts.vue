@@ -21,6 +21,23 @@ const costs = ref<Record<number, number | string>>({});
 const shopkeepers = ref<Record<number, any>>({});
 const creditors = ref<any[]>([]);
 const saving = ref<number | null>(null);
+const editing = ref<Record<number, boolean>>({});
+
+// a wrong bought price can be put right afterwards
+function openEdit(item: any) {
+  editing.value[item.id] = true;
+  costs.value[item.id] = item.cost_price;
+}
+
+function cancelEdit(item: any) {
+  delete editing.value[item.id];
+  delete costs.value[item.id];
+  delete shopkeepers.value[item.id];
+}
+
+function canType(item: any) {
+  return (item.cost_price === null || editing.value[item.id]) && can('pending_costs_edit', 'Pending Cost');
+}
 
 const list = useListPage('pending-costs', {
   kpis: false,
@@ -65,6 +82,7 @@ async function save(item: any) {
     alerts.success(`Bought price saved for ${item.product_name}`);
     delete costs.value[item.id];
     delete shopkeepers.value[item.id];
+    delete editing.value[item.id];
     list.refresh();
     pending.refresh();
   } catch (error) {
@@ -110,7 +128,7 @@ loadCreditors();
           <template v-slot:item.quantity="{ item }">{{ formatQuantity(item.quantity, item.unit) }} × {{ formatMoney(item.unit_price) }}</template>
           <template v-slot:item.total="{ item }"><span class="font-weight-semibold">{{ formatMoney(item.total) }}</span></template>
           <template v-slot:item.creditor="{ item }">
-            <v-autocomplete v-if="item.cost_price === null && can('pending_costs_edit', 'Pending Cost')"
+            <v-autocomplete v-if="canType(item)"
               :model-value="shopkeepers[item.id] ?? item.creditor" :items="creditors" item-title="name" item-value="id" return-object
               density="compact" hide-details clearable placeholder="Nobody" style="max-width: 200px"
               @update:model-value="(value: any) => shopkeepers[item.id] = value" />
@@ -118,14 +136,18 @@ loadCreditors();
             <span v-else class="text-lightText">-</span>
           </template>
           <template v-slot:item.cost_price="{ item }">
-            <div v-if="item.cost_price === null && can('pending_costs_edit', 'Pending Cost')" class="d-flex align-center ga-2 py-1">
+            <div v-if="canType(item)" class="d-flex align-center ga-2 py-1">
               <v-text-field v-model="costs[item.id]" type="number" min="0" density="compact" hide-details placeholder="What you paid" style="max-width: 140px" />
               <v-btn color="primary" variant="flat" size="small" :loading="saving === item.id" :disabled="costs[item.id] === undefined || costs[item.id] === ''" @click="save(item)">Save</v-btn>
+              <v-btn v-if="editing[item.id]" variant="text" size="small" class="text-none" @click="cancelEdit(item)">Cancel</v-btn>
             </div>
             <span v-else-if="item.cost_price === null" class="text-error font-weight-bold">Pending</span>
-            <div v-else>
-              <div class="font-weight-semibold">{{ formatMoney(item.cost_price) }}</div>
-              <div class="text-caption text-lightText">by {{ item.entered_by?.full_name }} · {{ formatDateTime(item.cost_entered_at) }}</div>
+            <div v-else class="d-flex align-center ga-2">
+              <div>
+                <div class="font-weight-semibold">{{ formatMoney(item.cost_price) }}</div>
+                <div class="text-caption text-lightText">by {{ item.entered_by?.full_name }} · {{ formatDateTime(item.cost_entered_at) }}</div>
+              </div>
+              <v-btn v-if="can('pending_costs_edit', 'Pending Cost')" icon="mdi-pencil-outline" color="#EFF0F1" size="x-small" title="Fix this price" @click="openEdit(item)" />
             </div>
           </template>
           <template v-slot:item.profit="{ item }">
