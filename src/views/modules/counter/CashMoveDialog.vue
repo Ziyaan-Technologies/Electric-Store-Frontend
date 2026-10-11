@@ -38,10 +38,12 @@ const isExpense = computed(() => form.value.reason === 'Shop expense');
 const isSupplier = computed(() => form.value.reason === 'Paid another shopkeeper');
 const isDebtor = computed(() => form.value.reason === 'Paid to debtor');
 
-async function loadDebtors() {
+const debtorSearch = ref('');
+
+async function loadDebtors(term = '') {
   loadingDebtors.value = true;
   try {
-    debtors.value = (await axios.get('debtors/list', { params: { clientstore_id: authStore.clientstoreId } })).data;
+    debtors.value = (await axios.get('debtors/list', { params: { clientstore_id: authStore.clientstoreId, search: term || undefined } })).data;
   } catch (error) {
     debtors.value = [];
   } finally {
@@ -49,10 +51,12 @@ async function loadDebtors() {
   }
 }
 
-async function loadCreditors() {
+const creditorSearch = ref('');
+
+async function loadCreditors(term = '') {
   loadingCreditors.value = true;
   try {
-    creditors.value = (await axios.get('creditors/list', { params: { clientstore_id: authStore.clientstoreId } })).data;
+    creditors.value = (await axios.get('creditors/list', { params: { clientstore_id: authStore.clientstoreId, search: term || undefined } })).data;
   } catch (error) {
     creditors.value = [];
   } finally {
@@ -109,8 +113,9 @@ watch(() => props.modelValue, (open) => {
       </v-col>
       <v-col v-if="isSupplier" cols="12">
         <v-label class="text-subtitle-1 pb-2 text-lightText">Which shopkeeper</v-label>
-        <v-autocomplete v-model="creditor" :items="creditors" :loading="loadingCreditors" item-title="name" item-value="id" return-object
-          :rules="[(v: any) => !!v || 'Choose the shopkeeper']" placeholder="Search a shopkeeper" prepend-inner-icon="mdi-store-search-outline" hide-details="auto">
+        <v-autocomplete v-model="creditor" :items="creditors" :loading="loadingCreditors" item-title="name" item-value="id" return-object no-filter
+          v-model:search="creditorSearch" @update:search="loadCreditors" @focus="loadCreditors(creditorSearch)"
+          :rules="[(v: any) => !!v || 'Choose the shopkeeper']" placeholder="Type a name or phone" prepend-inner-icon="mdi-store-search-outline" hide-details="auto">
           <template v-slot:item="{ props: itemProps, item }">
             <v-list-item v-bind="itemProps" :title="item.raw.name" :subtitle="item.raw.phone || ''">
               <template v-slot:append>
@@ -118,7 +123,7 @@ watch(() => props.modelValue, (open) => {
               </template>
             </v-list-item>
           </template>
-          <template v-slot:no-data><p class="px-4 py-3 mb-0 text-lightText">No creditors in this shop yet</p></template>
+          <template v-slot:no-data><p class="px-4 py-3 mb-0 text-lightText">{{ creditorSearch ? 'No shopkeeper by that name' : 'Type a name to search' }}</p></template>
         </v-autocomplete>
         <div v-if="creditor" class="text-caption text-lightText mt-1">
           {{ creditor.balance > 0 ? `We owe him ${formatMoney(creditor.balance)}` : `He is holding an advance of ${formatMoney(creditor.advance)}` }} · this payment goes off his khata.
@@ -126,8 +131,9 @@ watch(() => props.modelValue, (open) => {
       </v-col>
       <v-col v-if="isDebtor" cols="12">
         <v-label class="text-subtitle-1 pb-2 text-lightText">Which customer</v-label>
-        <v-autocomplete v-model="debtor" :items="debtors" :loading="loadingDebtors" item-title="name" item-value="id" return-object
-          :rules="[(v: any) => !!v || 'Choose the customer']" placeholder="Search a khata customer" prepend-inner-icon="mdi-account-search-outline" hide-details="auto">
+        <v-autocomplete v-model="debtor" :items="debtors" :loading="loadingDebtors" item-title="name" item-value="id" return-object no-filter
+          v-model:search="debtorSearch" @update:search="loadDebtors" @focus="loadDebtors(debtorSearch)"
+          :rules="[(v: any) => !!v || 'Choose the customer']" placeholder="Type a name or phone" prepend-inner-icon="mdi-account-search-outline" hide-details="auto">
           <template v-slot:item="{ props: itemProps, item }">
             <v-list-item v-bind="itemProps" :title="item.raw.name" :subtitle="item.raw.phone || ''">
               <template v-slot:append>
@@ -135,7 +141,7 @@ watch(() => props.modelValue, (open) => {
               </template>
             </v-list-item>
           </template>
-          <template v-slot:no-data><p class="px-4 py-3 mb-0 text-lightText">No khata customers in this shop yet</p></template>
+          <template v-slot:no-data><p class="px-4 py-3 mb-0 text-lightText">{{ debtorSearch ? 'No khata customer by that name' : 'Type a name to search' }}</p></template>
         </v-autocomplete>
         <div v-if="debtor" class="text-caption text-lightText mt-1">
           He owes {{ formatMoney(debtor.balance) }} now · this money is added to his khata.
