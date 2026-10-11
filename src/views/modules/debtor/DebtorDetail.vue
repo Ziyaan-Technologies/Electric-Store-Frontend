@@ -129,6 +129,9 @@ onMounted(load);
           <div class="khata-summary__box">
             <span>Put on khata</span><strong>{{ formatMoney(debtor.billed) }}</strong>
           </div>
+          <div v-if="debtor.given" class="khata-summary__box">
+            <span>Cash given to him</span><strong class="text-error">{{ formatMoney(debtor.given) }}</strong>
+          </div>
           <div class="khata-summary__box">
             <span>Paid</span><strong class="text-success">{{ formatMoney(debtor.paid) }}</strong>
           </div>
@@ -179,6 +182,28 @@ onMounted(load);
     </v-col>
 
     <v-col cols="12" lg="5">
+      <UiParentCard v-if="debtor.given_rows?.length" title="Cash given to him" icon="mdi-cash-minus" class="mb-6">
+        <v-table class="border rounded-md">
+          <thead>
+            <tr>
+              <th class="text-left">DATE</th>
+              <th class="text-left">FROM</th>
+              <th class="text-right">AMOUNT</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in debtor.given_rows" :key="row.id">
+              <td class="text-no-wrap">{{ formatDateTime(row.created_at) }}</td>
+              <td>
+                <div>{{ row.counter || 'Taken directly' }}</div>
+                <div class="text-caption text-lightText">{{ [row.given_by?.full_name, row.note].filter(Boolean).join(' · ') }}</div>
+              </td>
+              <td class="text-right font-weight-bold text-error">{{ formatMoney(row.amount) }}</td>
+            </tr>
+          </tbody>
+        </v-table>
+      </UiParentCard>
+
       <UiParentCard title="Payments" icon="mdi-cash-check">
         <v-table class="border rounded-md">
           <thead>

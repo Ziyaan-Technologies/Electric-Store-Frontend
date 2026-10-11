@@ -172,7 +172,7 @@ onMounted(async () => {
           <div class="d-flex align-center justify-space-between mt-6 mb-2">
             <div>
               <h4 class="text-h5">Sizes / Ratings</h4>
-              <p class="text-caption text-lightText mb-0">Each row is one thing you sell, like "1 Pole · 32A". Stock of a saved size changes through Add Stock.</p>
+              <p class="text-caption text-lightText mb-0">Each row is one thing you sell, like "1 Pole · 32A". Changing stock or cost here is a correction, and it goes into the item history; Add Stock is for goods that came in.</p>
             </div>
             <v-btn variant="tonal" color="primary" prepend-icon="mdi-plus" @click="variants.push(blankVariant())">Add Size</v-btn>
           </div>
@@ -199,8 +199,7 @@ onMounted(async () => {
                   <td><v-text-field v-model.number="variant.cost_price" type="number" min="0" density="compact" hide-details /></td>
                   <td><v-text-field v-model.number="variant.sale_price" type="number" min="0" density="compact" hide-details /></td>
                   <td>
-                    <v-text-field v-if="!variant.id" v-model.number="variant.stock" type="number" min="0" density="compact" hide-details />
-                    <span v-else class="text-no-wrap">{{ formatNumber(variant.stock, 3) }}</span>
+                    <v-text-field v-model.number="variant.stock" type="number" min="0" density="compact" hide-details />
                   </td>
                   <td><v-text-field v-model.number="variant.reorder_level" type="number" min="0" density="compact" hide-details /></td>
                   <td>

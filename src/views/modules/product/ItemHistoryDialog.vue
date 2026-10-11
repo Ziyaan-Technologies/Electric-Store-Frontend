@@ -89,7 +89,7 @@ watch(() => props.modelValue, (open) => {
               <tr v-for="row in data.rows" :key="row.id">
                 <td>
                   <v-chip size="small" variant="tonal" :color="row.kind === 'Out' ? 'primary' : row.kind === 'Correction' ? 'warning' : 'success'">
-                    {{ row.kind === 'Out' ? 'Sold' : row.kind === 'Correction' ? 'Cost changed' : 'Came in' }}
+                    {{ row.kind === 'Out' ? 'Sold' : row.kind === 'Correction' ? 'Corrected' : 'Came in' }}
                   </v-chip>
                 </td>
                 <td class="text-no-wrap">{{ formatDateTime(row.created_at) }}</td>

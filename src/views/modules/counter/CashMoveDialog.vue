@@ -26,13 +26,28 @@ const form = ref({ reason: '', amount: '' as number | string, note: '' });
 const creditor = ref<any>(null);
 const creditors = ref<any[]>([]);
 const loadingCreditors = ref(false);
+const debtor = ref<any>(null);
+const debtors = ref<any[]>([]);
+const loadingDebtors = ref(false);
 
 const reasons = computed(() => (props.type === 'In'
   ? ['Change money added', 'Owner put cash in', 'Other']
-  : ['Shop expense', 'Paid another shopkeeper', 'Owner took cash', 'Bank deposit', 'Other']));
+  : ['Shop expense', 'Paid another shopkeeper', 'Paid to debtor', 'Owner took cash', 'Bank deposit', 'Other']));
 
 const isExpense = computed(() => form.value.reason === 'Shop expense');
 const isSupplier = computed(() => form.value.reason === 'Paid another shopkeeper');
+const isDebtor = computed(() => form.value.reason === 'Paid to debtor');
+
+async function loadDebtors() {
+  loadingDebtors.value = true;
+  try {
+    debtors.value = (await axios.get('debtors/list', { params: { clientstore_id: authStore.clientstoreId } })).data;
+  } catch (error) {
+    debtors.value = [];
+  } finally {
+    loadingDebtors.value = false;
+  }
+}
 
 async function loadCreditors() {
   loadingCreditors.value = true;
@@ -56,6 +71,7 @@ async function submit() {
       ...form.value,
       amount: Number(form.value.amount),
       creditor_id: isSupplier.value ? creditor.value?.id || null : null,
+      debtor_id: isDebtor.value ? debtor.value?.id || null : null,
     })).data;
     emit('saved', session);
     emit('update:modelValue', false);
@@ -70,9 +86,13 @@ watch(() => props.modelValue, (open) => {
   if (open) {
     form.value = { reason: reasons.value[0], amount: '', note: '' };
     creditor.value = null;
+    debtor.value = null;
     alerts.clear();
     drawerRef.value?.resetValidation();
-    if (props.type === 'Out') loadCreditors();
+    if (props.type === 'Out') {
+      loadCreditors();
+      loadDebtors();
+    }
   }
 });
 </script>
@@ -102,6 +122,23 @@ watch(() => props.modelValue, (open) => {
         </v-autocomplete>
         <div v-if="creditor" class="text-caption text-lightText mt-1">
           {{ creditor.balance > 0 ? `We owe him ${formatMoney(creditor.balance)}` : `He is holding an advance of ${formatMoney(creditor.advance)}` }} · this payment goes off his khata.
+        </div>
+      </v-col>
+      <v-col v-if="isDebtor" cols="12">
+        <v-label class="text-subtitle-1 pb-2 text-lightText">Which customer</v-label>
+        <v-autocomplete v-model="debtor" :items="debtors" :loading="loadingDebtors" item-title="name" item-value="id" return-object
+          :rules="[(v: any) => !!v || 'Choose the customer']" placeholder="Search a khata customer" prepend-inner-icon="mdi-account-search-outline" hide-details="auto">
+          <template v-slot:item="{ props: itemProps, item }">
+            <v-list-item v-bind="itemProps" :title="item.raw.name" :subtitle="item.raw.phone || ''">
+              <template v-slot:append>
+                <span class="text-caption font-weight-bold" :class="item.raw.balance > 0 ? 'text-error' : 'text-success'">{{ formatMoney(item.raw.balance) }}</span>
+              </template>
+            </v-list-item>
+          </template>
+          <template v-slot:no-data><p class="px-4 py-3 mb-0 text-lightText">No khata customers in this shop yet</p></template>
+        </v-autocomplete>
+        <div v-if="debtor" class="text-caption text-lightText mt-1">
+          He owes {{ formatMoney(debtor.balance) }} now · this money is added to his khata.
         </div>
       </v-col>
       <v-col cols="12">
