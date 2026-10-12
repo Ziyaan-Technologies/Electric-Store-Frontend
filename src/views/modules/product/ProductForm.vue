@@ -35,7 +35,7 @@ const form = ref<any>({
 const units = [
   { value: 'Piece', title: 'Piece' },
   { value: 'Kg', title: 'Kg' },
-  { value: 'Foot', title: 'Feet' },
+  { value: 'Meter', title: 'Meter' },
 ];
 const variants = ref<any[]>([]);
 
@@ -169,7 +169,7 @@ onMounted(async () => {
                 <v-col cols="12" sm="6">
                   <v-label class="text-subtitle-1 pb-2 text-lightText">Sold by</v-label>
                   <v-select v-model="form.unit" :items="units" item-title="title" item-value="value" hide-details />
-                  <div class="text-caption text-lightText mt-1">Kg and Feet take part amounts like 2.5; Piece takes whole numbers.</div>
+                  <div class="text-caption text-lightText mt-1">Kg and Meter take part amounts like 2.5; Piece takes whole numbers.</div>
                 </v-col>
               </v-row>
             </v-col>
@@ -191,15 +191,15 @@ onMounted(async () => {
           </div>
 
           <div class="border rounded-md overflow-x-auto">
-            <v-table density="comfortable">
+            <v-table density="comfortable" class="size-table">
               <thead>
                 <tr>
                   <th style="min-width: 160px">SIZE / RATING</th>
                   <th style="min-width: 160px">BARCODE</th>
                   <th style="width: 120px">COST</th>
                   <th style="width: 120px">SALE PRICE</th>
-                  <th style="width: 100px">STOCK</th>
-                  <th style="width: 100px">REORDER AT</th>
+                  <th style="width: 130px">STOCK</th>
+                  <th style="width: 110px">REORDER AT</th>
                   <th style="width: 80px">MARGIN</th>
                   <th style="width: 70px">ACTIVE</th>
                   <th style="width: 60px"></th>
@@ -237,3 +237,16 @@ onMounted(async () => {
     </v-col>
   </v-row>
 </template>
+
+<style scoped>
+.size-table input[type='number']::-webkit-outer-spin-button,
+.size-table input[type='number']::-webkit-inner-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.size-table input[type='number'] {
+  -moz-appearance: textfield;
+}
+</style>

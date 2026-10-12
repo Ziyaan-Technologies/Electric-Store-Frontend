@@ -90,7 +90,7 @@ export function formatNumber(value?: number | string | null, digits = 2) {
 
 /** the short word for a unit: pcs, kg or ft */
 export function unitLabel(unit?: string | null) {
-    return unit === 'Kg' ? 'kg' : unit === 'Foot' ? 'ft' : 'pcs';
+    return unit === 'Kg' ? 'kg' : unit === 'Meter' ? 'm' : 'pcs';
 }
 
 /** a quantity with its unit, like "2.5 kg" */
