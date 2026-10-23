@@ -131,13 +131,14 @@ watch(() => props.modelValue, (open) => {
               <span>Size / Rating</span><span class="text-right">Price</span><span class="text-right">In stock</span><span class="text-center">Qty</span>
             </div>
             <div v-for="variant in product.variants" :key="variant.id" class="variant-grid__row"
-              :class="{ 'variant-grid__row--picked': (quantities[variant.id] || 0) > 0, 'variant-grid__row--out': !available(variant) }">
+              :class="{ 'variant-grid__row--picked': (quantities[variant.id] || 0) > 0, 'variant-grid__row--out': !available(variant) }"
+              @click="step(variant, 1)">
               <span class="font-weight-semibold">{{ variant.name }}</span>
               <span class="text-right font-weight-bold">{{ formatMoney(variant.sale_price) }}</span>
               <span class="text-right" :class="variant.stock <= variant.reorder_level ? 'text-error font-weight-bold' : ''">
                 {{ formatQuantity(available(variant), product.unit) }}<span v-if="inCart[variant.id]" class="text-caption text-lightText"> ({{ inCart[variant.id] }} on bill)</span>
               </span>
-              <div class="qty-control">
+              <div class="qty-control" @click.stop>
                 <v-btn icon="mdi-minus" size="x-small" variant="tonal" color="primary" :disabled="!(quantities[variant.id] > 0)" @click="step(variant, -1)" />
                 <input class="qty-control__input" type="number" min="0" :max="available(variant)" :value="quantities[variant.id] || 0"
                   :disabled="!available(variant)" @input="setQuantity(variant, ($event.target as HTMLInputElement).value)" @focus="($event.target as HTMLInputElement).select()" />
@@ -239,6 +240,10 @@ watch(() => props.modelValue, (open) => {
 
 .variant-grid__row:last-child {
   border-bottom: 0;
+}
+
+.variant-grid__row:not(.variant-grid__row--head):not(.variant-grid__row--out) {
+  cursor: pointer;
 }
 
 .variant-grid__row--head {

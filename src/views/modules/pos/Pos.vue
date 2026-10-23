@@ -10,6 +10,7 @@ import ChargeDialog from './ChargeDialog.vue';
 import BillDiscountDialog from './BillDiscountDialog.vue';
 import PaymentDialog from './PaymentDialog.vue';
 import QuotationDialog from './QuotationDialog.vue';
+import ArrangeDialog from './ArrangeDialog.vue';
 import CashMoveDialog from '@/views/modules/counter/CashMoveDialog.vue';
 import CloseCounterDialog from '@/views/modules/counter/CloseCounterDialog.vue';
 import { useAuthStore } from '@/stores/auth';
@@ -32,6 +33,8 @@ const counters = ref<any[]>([]);
 const openCounterId = ref<number | null>(null);
 const openSessions = ref<any[]>([]);
 const anyCounter = can('pos_any_counter', 'POS');
+const canArrangeBrands = can('brands_edit', 'Brand');
+const canArrangeCategories = can('categories_edit', 'Category');
 const openingCash = ref<number | string>('');
 const openingCounter = ref(false);
 
@@ -136,6 +139,29 @@ function pickDebtor(value: any) {
 
 async function loadCatalog() {
   catalog.value = (await axios.get('pos/catalog', { params: { clientstore_id: authStore.clientstoreId } })).data;
+}
+
+const arranging = ref<'brands' | 'categories' | null>(null);
+const arrangeOpen = ref(false);
+const savingOrder = ref(false);
+
+function openArrange(kind: 'brands' | 'categories') {
+  arranging.value = kind;
+  arrangeOpen.value = true;
+}
+
+async function saveOrder(ids: number[]) {
+  savingOrder.value = true;
+  try {
+    await axios.post(`${arranging.value}/v1/reorder`, { clientstore_id: authStore.clientstoreId, ids });
+    await loadCatalog();
+    arrangeOpen.value = false;
+    alerts.success(arranging.value === 'brands' ? 'Brand order saved' : 'Category order saved');
+  } catch (error) {
+    alerts.fail(error);
+  } finally {
+    savingOrder.value = false;
+  }
 }
 
 async function loadSession() {
@@ -670,14 +696,16 @@ onMounted(async () => {
         </button>
       </div>
       <v-btn icon="mdi-chevron-right" size="small" variant="text" color="primary" class="flex-shrink-0" @click="scrollBrands(1)" />
+      <v-btn v-if="canArrangeBrands" icon="mdi-pencil-outline" size="small" variant="tonal" color="primary" class="flex-shrink-0" title="Arrange brands" @click="openArrange('brands')" />
     </div>
 
     <v-row class="mt-1">
       <v-col cols="12" md="7" xl="8">
         <div class="pos-panel">
-          <div class="pos-panel__search">
+          <div class="pos-panel__search d-flex align-center ga-2">
             <v-text-field v-model="search" prepend-inner-icon="mdi-magnify" placeholder="Search model, size or scan barcode..." hide-details clearable
               @keydown.enter.prevent="onSearchEnter" />
+            <v-btn v-if="canArrangeCategories" icon="mdi-pencil-outline" size="small" variant="tonal" color="primary" class="flex-shrink-0" title="Arrange categories" @click="openArrange('categories')" />
           </div>
 
           <div v-if="search" class="search-results">
@@ -846,6 +874,8 @@ onMounted(async () => {
   <CategoryDialog v-model="categoryDialog" :category="activeCategory" :brands="catalog.brands" :products="catalog.products" :brand-id="brandId" :in-cart="inCart"
     :only-product-id="onlyProductId" @add="addRows" />
   <QuickItemDialog v-model="quickDialog" @add="addOutside" />
+  <ArrangeDialog v-model="arrangeOpen" :title="arranging === 'brands' ? 'Arrange Brands' : 'Arrange Categories'" :icon="arranging === 'brands' ? 'mdi-tag-multiple-outline' : 'mdi-shape-outline'"
+    :items="arranging === 'brands' ? catalog.brands : catalog.categories" :saving="savingOrder" @save="saveOrder" />
   <ChargeDialog v-model="chargeDialog" @add="addCharge" />
   <BillDiscountDialog v-model="discountDialog" :lines="uncovered" @apply="applyBillDiscount" />
   <PaymentDialog v-model="paymentDialog" :total="bill.total" :debtor="debtor" :can-pay-later="can('pos_pay_later', 'POS')" :saving="saving" :error-text="saveError"
