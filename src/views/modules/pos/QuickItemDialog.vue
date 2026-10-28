@@ -9,6 +9,7 @@ import { formatMoney, rules } from '@/utils/api';
 
 const props = defineProps<{
   modelValue: boolean;
+  forQuotation?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -58,8 +59,8 @@ async function submit() {
     product_name: form.value.product_name.trim(),
     quantity: Number(form.value.quantity),
     unit_price: Number(form.value.unit_price),
-    creditor_id: creditor.value?.id || null,
-    creditor_name: creditor.value?.name || '',
+    creditor_id: props.forQuotation ? null : creditor.value?.id || null,
+    creditor_name: props.forQuotation ? '' : creditor.value?.name || '',
   });
   emit('update:modelValue', false);
 }
@@ -70,19 +71,19 @@ watch(() => props.modelValue, (open) => {
     creditor.value = null;
     creditorSearch.value = '';
     alerts.clear();
-    findCreditors('');
+    if (!props.forQuotation) findCreditors('');
     drawerRef.value?.resetValidation();
   }
 });
 </script>
 
 <template>
-  <RightDrawer ref="drawerRef" :model-value="modelValue" title="Item From Another Shopkeeper" icon="mdi-account-arrow-left-outline"
-    subtitle="Sell it now, enter what you paid for it before closing the counter" submit-label="Add to Bill" max-width="480"
+  <RightDrawer ref="drawerRef" :model-value="modelValue" :title="forQuotation ? 'Item Not in Shop' : 'Item From Another Shopkeeper'" icon="mdi-account-arrow-left-outline"
+    :subtitle="forQuotation ? '' : 'Sell it now, enter what you paid for it before closing the counter'" :submit-label="forQuotation ? 'Add to Quotation' : 'Add to Bill'" max-width="480"
     :show-error-alert="alerts.showErrorAlert.value" :error-text="alerts.errorText.value"
     @update:model-value="emit('update:modelValue', $event)" @submit="submit" @close-error="alerts.clear()">
     <v-row>
-      <v-col cols="12" class="pt-4">
+      <v-col v-if="!forQuotation" cols="12" class="pt-4">
         <v-label class="text-subtitle-1 pb-2 text-lightText">Whose shop is it from?</v-label>
         <v-autocomplete v-model="creditor" :items="creditors" :loading="loadingCreditors" item-title="name" item-value="id" return-object
           density="compact" hide-details clearable no-filter placeholder="Optional · search a shopkeeper" prepend-inner-icon="mdi-store-search-outline"
@@ -104,7 +105,7 @@ watch(() => props.modelValue, (open) => {
         </v-autocomplete>
         <div class="text-caption text-lightText mt-1">The bought price goes on his khata as money we owe him.</div>
       </v-col>
-      <v-col cols="12">
+      <v-col cols="12" :class="{ 'pt-4': forQuotation }">
         <v-label class="text-subtitle-1 pb-2 text-lightText">Item name</v-label>
         <v-text-field v-model="form.product_name" :rules="[rules.required]" placeholder="e.g. 4mm copper wire" hide-details="auto" />
       </v-col>
@@ -116,7 +117,7 @@ watch(() => props.modelValue, (open) => {
         <v-label class="text-subtitle-1 pb-2 text-lightText">Selling price (each)</v-label>
         <v-text-field v-model="form.unit_price" type="number" min="0" :rules="[rules.positive]" hide-details="auto" />
       </v-col>
-      <v-col cols="12">
+      <v-col v-if="!forQuotation" cols="12">
         <v-alert type="warning" variant="tonal" density="compact" icon="mdi-clock-alert-outline">
           The bought price stays <strong>pending</strong>. This counter cannot close until someone enters it.
         </v-alert>

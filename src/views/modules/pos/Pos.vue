@@ -18,7 +18,7 @@ import { useAuthStore } from '@/stores/auth';
 import { usePendingStore } from '@/stores/pending';
 import { useAlerts } from '@/composables/useAlerts';
 import { can } from '@/utils/permissions';
-import { apiError, formatDate, formatDateTime, formatMoney, formatNumber, formatQuantity, unitLabel } from '@/utils/api';
+import { apiError, formatDate, formatDateTime, formatMoney, formatNumber, formatQuantity, unitLabel, wholeUnit } from '@/utils/api';
 import { activeDiscounts, calculateBill, discountLabel, nextDiscountCode, type BillDiscount, type BillLine, type DiscountType } from '@/utils/bill';
 
 const route = useRoute();
@@ -414,12 +414,12 @@ function addCharge(item: { product_name: string; unit_price: number }) {
 }
 
 function stepFor(line: BillLine) {
-  return line.unit && line.unit !== 'Piece' ? 0.5 : 1;
+  return wholeUnit(line.unit) ? 1 : 0.5;
 }
 
 function cleanQuantity(line: BillLine, value: any) {
   const asked = Number(value) || 0;
-  if (!line.unit || line.unit === 'Piece') {
+  if (wholeUnit(line.unit)) {
     return Math.max(1, Math.floor(asked));
   }
   return Math.max(0.001, Math.round(asked * 1000) / 1000);
@@ -863,7 +863,7 @@ onMounted(async () => {
           </div>
 
           <div class="bill-panel__tools">
-            <v-btn v-if="can('pos_outside_item', 'POS')" variant="flat" color="warning" class="bill-tool-btn" prepend-icon="mdi-account-arrow-left-outline" @click="quickDialog = true">Item from another shop</v-btn>
+            <v-btn v-if="can('pos_outside_item', 'POS')" variant="flat" color="warning" class="bill-tool-btn" prepend-icon="mdi-account-arrow-left-outline" @click="quickDialog = true">{{ quoting ? 'Item not in shop' : 'Item from another shop' }}</v-btn>
             <v-btn v-if="can('pos_bill_discount', 'POS')" variant="flat" color="primary" class="bill-tool-btn" prepend-icon="mdi-sale-outline" :disabled="!uncovered.length" @click="discountDialog = true">Bill discount</v-btn>
           </div>
 
@@ -903,7 +903,7 @@ onMounted(async () => {
 
   <CategoryDialog v-model="categoryDialog" :category="activeCategory" :brands="catalog.brands" :products="catalog.products" :brand-id="brandId" :in-cart="inCart"
     :only-product-id="onlyProductId" :ignore-stock="quoting" @add="addRows" />
-  <QuickItemDialog v-model="quickDialog" @add="addOutside" />
+  <QuickItemDialog v-model="quickDialog" :for-quotation="quoting" @add="addOutside" />
   <DeleteDialog v-model="leaveQuoteOpen" message="Leave quotation?" hint="Some items on it are more than the stock, so the bill will be cleared." confirm-label="Yes, Clear" tone="warning" @confirm="clearBill()" />
   <ArrangeDialog v-model="arrangeOpen" :title="arranging === 'brands' ? 'Arrange Brands' : 'Arrange Categories'" :icon="arranging === 'brands' ? 'mdi-tag-multiple-outline' : 'mdi-shape-outline'"
     :items="arranging === 'brands' ? catalog.brands : catalog.categories" :saving="savingOrder" @save="saveOrder" />

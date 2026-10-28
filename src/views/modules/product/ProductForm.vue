@@ -9,7 +9,7 @@ import ImageField from '@/components/shared/ImageField.vue';
 import { useAlerts } from '@/composables/useAlerts';
 import { useLookups } from '@/composables/useLookups';
 import { useAuthStore } from '@/stores/auth';
-import { formatMoney, formatNumber, rules, uploadImage, unitLabel } from '@/utils/api';
+import { formatMoney, formatNumber, rules, uploadImage, unitLabel, wholeUnit } from '@/utils/api';
 
 const route = useRoute();
 const router = useRouter();
@@ -36,6 +36,7 @@ const units = [
   { value: 'Piece', title: 'Piece' },
   { value: 'Kg', title: 'Kg' },
   { value: 'Meter', title: 'Meter' },
+  { value: 'Box', title: 'Box' },
 ];
 const variants = ref<any[]>([]);
 
@@ -169,7 +170,7 @@ onMounted(async () => {
                 <v-col cols="12" sm="6">
                   <v-label class="text-subtitle-1 pb-2 text-lightText">Sold by</v-label>
                   <v-select v-model="form.unit" :items="units" item-title="title" item-value="value" hide-details />
-                  <div class="text-caption text-lightText mt-1">Kg and Meter take part amounts like 2.5; Piece takes whole numbers.</div>
+                  <div class="text-caption text-lightText mt-1">Kg and Meter take part amounts like 2.5; Piece and Box take whole numbers.</div>
                 </v-col>
               </v-row>
             </v-col>
@@ -212,7 +213,7 @@ onMounted(async () => {
                   <td><v-text-field v-model.number="variant.cost_price" type="number" min="0" density="compact" hide-details /></td>
                   <td><v-text-field v-model.number="variant.sale_price" type="number" min="0" density="compact" hide-details /></td>
                   <td>
-                    <v-text-field v-model.number="variant.stock" type="number" min="0" :step="form.unit === 'Piece' ? 1 : 0.5" density="compact" hide-details :suffix="unitLabel(form.unit)" />
+                    <v-text-field v-model.number="variant.stock" type="number" min="0" :step="wholeUnit(form.unit) ? 1 : 0.5" density="compact" hide-details :suffix="unitLabel(form.unit)" />
                   </td>
                   <td><v-text-field v-model.number="variant.reorder_level" type="number" min="0" density="compact" hide-details /></td>
                   <td>
