@@ -11,6 +11,7 @@ import BillDiscountDialog from './BillDiscountDialog.vue';
 import PaymentDialog from './PaymentDialog.vue';
 import QuotationDialog from './QuotationDialog.vue';
 import ArrangeDialog from './ArrangeDialog.vue';
+import DeleteDialog from '@/components/shared/DeleteDialog.vue';
 import CashMoveDialog from '@/views/modules/counter/CashMoveDialog.vue';
 import CloseCounterDialog from '@/views/modules/counter/CloseCounterDialog.vue';
 import { useAuthStore } from '@/stores/auth';
@@ -62,6 +63,8 @@ const chargeDialog = ref(false);
 const discountDialog = ref(false);
 const paymentDialog = ref(false);
 const quotationDialog = ref(false);
+const quoting = ref(false);
+const leaveQuoteOpen = ref(false);
 const printDialog = ref(false);
 const printDoc = ref<any>(null);
 const printKind = ref<'bill' | 'quotation'>('bill');
@@ -303,7 +306,7 @@ function openCategory(category: any) {
 }
 
 function addVariant(product: any, variant: any, quantity: number) {
-  const left = variant.stock - (inCart.value[variant.id] || 0);
+  const left = quoting.value ? Infinity : variant.stock - (inCart.value[variant.id] || 0);
   const qty = Math.min(quantity, left);
   if (qty <= 0) {
     alerts.fail(null, `No more stock of ${product.name} ${variant.name}`);
@@ -425,7 +428,7 @@ function cleanQuantity(line: BillLine, value: any) {
 function setQuantity(line: BillLine, value: any) {
   const number = cleanQuantity(line, value);
   const limit = stockLeft(line) - ((inCart.value[line.variant_id || 0] || 0) - Number(line.quantity));
-  if (line.variant_id && number > limit) {
+  if (line.variant_id && !quoting.value && number > limit) {
     alerts.fail(null, `Only ${formatQuantity(limit, line.unit)} of ${line.product_name} ${line.variant_name} left`);
     line.quantity = Math.max(cleanQuantity(line, limit), 0);
     return;
@@ -473,7 +476,8 @@ function removeBillDiscount(code: string) {
   discounts.value = discounts.value.filter((discount) => discount.code !== code);
 }
 
-function clearBill() {
+function clearBill(keepQuoting = false) {
+  if (!keepQuoting) quoting.value = false;
   lines.value = [];
   discounts.value = [];
   customerName.value = '';
@@ -524,9 +528,26 @@ async function confirmPayment(payment: { payment_method: string; amount_received
 }
 
 function startQuotation() {
+  if (!quoting.value) {
+    quoting.value = true;
+    return;
+  }
   if (!lines.value.length) return;
   saveError.value = '';
   quotationDialog.value = true;
+}
+
+const overStock = computed(() => Object.entries(inCart.value).some(([id, quantity]) => {
+  const variant = catalog.value.products.flatMap((product) => product.variants).find((row: any) => row.id === Number(id));
+  return variant && Number(quantity) > variant.stock;
+}));
+
+function leaveQuotation() {
+  if (overStock.value) {
+    leaveQuoteOpen.value = true;
+    return;
+  }
+  quoting.value = false;
 }
 
 async function confirmQuotation(data: any) {
@@ -719,7 +740,7 @@ onMounted(async () => {
                 <div class="text-caption text-lightText">{{ row.product.brand?.name || 'No brand' }} · {{ formatNumber(row.variant.stock - (inCart[row.variant.id] || 0), 3) }} in stock</div>
               </div>
               <span class="font-weight-bold me-2">{{ formatMoney(row.variant.sale_price) }}</span>
-              <v-btn color="primary" variant="flat" size="small" prepend-icon="mdi-plus" :disabled="row.variant.stock - (inCart[row.variant.id] || 0) <= 0" @click="addFromSearch(row)">Add</v-btn>
+              <v-btn color="primary" variant="flat" size="small" prepend-icon="mdi-plus" :disabled="!quoting && row.variant.stock - (inCart[row.variant.id] || 0) <= 0" @click="addFromSearch(row)">Add</v-btn>
             </div>
             <p v-if="!searchResults.length" class="text-center text-lightText py-8 mb-0">Nothing found for "{{ search }}"</p>
           </div>
@@ -761,10 +782,11 @@ onMounted(async () => {
                 </template>
               </v-autocomplete>
             </div>
+            <v-chip v-if="quoting" color="info" variant="flat" size="small" prepend-icon="mdi-file-document-edit-outline">Quotation</v-chip>
             <v-chip v-if="quotation" color="primary" variant="tonal" size="small" prepend-icon="mdi-file-document-edit-outline">From {{ quotation.quotation_number }}</v-chip>
             <v-chip v-if="editingBill" color="warning" variant="flat" size="small" prepend-icon="mdi-receipt-text-edit-outline">Changing {{ editingBill.bill_number }}</v-chip>
             <v-btn variant="text" color="primary" size="small" density="comfortable" prepend-icon="mdi-cash-plus" class="text-none" @click="chargeDialog = true">Charge</v-btn>
-            <v-btn variant="text" color="error" size="small" density="comfortable" prepend-icon="mdi-delete-sweep-outline" class="text-none" :disabled="!lines.length && !quotation" @click="clearBill">Clear</v-btn>
+            <v-btn variant="text" color="error" size="small" density="comfortable" prepend-icon="mdi-delete-sweep-outline" class="text-none" :disabled="!lines.length && !quotation" @click="clearBill(quoting)">Clear</v-btn>
           </div>
 
           <div class="bill-panel__customer">
@@ -860,11 +882,19 @@ onMounted(async () => {
           </div>
 
           <div class="bill-panel__actions">
-            <v-btn v-if="can('quotations_create', 'Quotation') && !editingBill" variant="outlined" color="primary" size="large" prepend-icon="mdi-file-document-edit-outline"
-              :disabled="!lines.length || !!quotation" @click="startQuotation">Quotation</v-btn>
-            <v-btn color="primary" variant="flat" size="large" prepend-icon="mdi-receipt-text-check-outline" :disabled="!lines.length" class="flex-grow-1" @click="startBill">
-              {{ editingBill ? 'Save Changes' : 'Bill' }} · {{ formatMoney(bill.total) }}
-            </v-btn>
+            <template v-if="quoting">
+              <v-btn variant="outlined" color="error" size="large" prepend-icon="mdi-close" @click="leaveQuotation">Cancel Quotation</v-btn>
+              <v-btn color="primary" variant="flat" size="large" prepend-icon="mdi-file-document-check-outline" :disabled="!lines.length" class="flex-grow-1" @click="startQuotation">
+                Save Quotation · {{ formatMoney(bill.total) }}
+              </v-btn>
+            </template>
+            <template v-else>
+              <v-btn v-if="can('quotations_create', 'Quotation') && !editingBill" variant="outlined" color="primary" size="large" prepend-icon="mdi-file-document-edit-outline"
+                :disabled="!!quotation" @click="startQuotation">Quotation</v-btn>
+              <v-btn color="primary" variant="flat" size="large" prepend-icon="mdi-receipt-text-check-outline" :disabled="!lines.length" class="flex-grow-1" @click="startBill">
+                {{ editingBill ? 'Save Changes' : 'Bill' }} · {{ formatMoney(bill.total) }}
+              </v-btn>
+            </template>
           </div>
         </div>
       </v-col>
@@ -872,8 +902,9 @@ onMounted(async () => {
   </template>
 
   <CategoryDialog v-model="categoryDialog" :category="activeCategory" :brands="catalog.brands" :products="catalog.products" :brand-id="brandId" :in-cart="inCart"
-    :only-product-id="onlyProductId" @add="addRows" />
+    :only-product-id="onlyProductId" :ignore-stock="quoting" @add="addRows" />
   <QuickItemDialog v-model="quickDialog" @add="addOutside" />
+  <DeleteDialog v-model="leaveQuoteOpen" message="Leave quotation?" hint="Some items on it are more than the stock, so the bill will be cleared." confirm-label="Yes, Clear" tone="warning" @confirm="clearBill()" />
   <ArrangeDialog v-model="arrangeOpen" :title="arranging === 'brands' ? 'Arrange Brands' : 'Arrange Categories'" :icon="arranging === 'brands' ? 'mdi-tag-multiple-outline' : 'mdi-shape-outline'"
     :items="arranging === 'brands' ? catalog.brands : catalog.categories" :saving="savingOrder" @save="saveOrder" />
   <ChargeDialog v-model="chargeDialog" @add="addCharge" />

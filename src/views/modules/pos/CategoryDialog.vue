@@ -10,6 +10,7 @@ const props = defineProps<{
   brandId: number | null;
   inCart: Record<number, number>;
   onlyProductId?: number | null;
+  ignoreStock?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -51,9 +52,13 @@ function available(variant: any) {
   return Math.max(0, variant.stock - (props.inCart[variant.id] || 0));
 }
 
+function limit(variant: any) {
+  return props.ignoreStock ? Infinity : available(variant);
+}
+
 function setQuantity(variant: any, value: any) {
   const number = Math.floor(Number(value) || 0);
-  quantities.value[variant.id] = Math.min(Math.max(0, number), available(variant));
+  quantities.value[variant.id] = Math.min(Math.max(0, number), limit(variant));
 }
 
 function step(variant: any, change: number) {
@@ -131,7 +136,7 @@ watch(() => props.modelValue, (open) => {
               <span>Size / Rating</span><span class="text-right">Price</span><span class="text-right">In stock</span><span class="text-center">Qty</span>
             </div>
             <div v-for="variant in product.variants" :key="variant.id" class="variant-grid__row"
-              :class="{ 'variant-grid__row--picked': (quantities[variant.id] || 0) > 0, 'variant-grid__row--out': !available(variant) }"
+              :class="{ 'variant-grid__row--picked': (quantities[variant.id] || 0) > 0, 'variant-grid__row--out': !limit(variant) }"
               @click="step(variant, 1)">
               <span class="font-weight-semibold">{{ variant.name }}</span>
               <span class="text-right font-weight-bold">{{ formatMoney(variant.sale_price) }}</span>
@@ -140,9 +145,9 @@ watch(() => props.modelValue, (open) => {
               </span>
               <div class="qty-control" @click.stop>
                 <v-btn icon="mdi-minus" size="x-small" variant="tonal" color="primary" :disabled="!(quantities[variant.id] > 0)" @click="step(variant, -1)" />
-                <input class="qty-control__input" type="number" min="0" :max="available(variant)" :value="quantities[variant.id] || 0"
-                  :disabled="!available(variant)" @input="setQuantity(variant, ($event.target as HTMLInputElement).value)" @focus="($event.target as HTMLInputElement).select()" />
-                <v-btn icon="mdi-plus" size="x-small" variant="flat" color="primary" :disabled="(quantities[variant.id] || 0) >= available(variant)" @click="step(variant, 1)" />
+                <input class="qty-control__input" type="number" min="0" :max="limit(variant)" :value="quantities[variant.id] || 0"
+                  :disabled="!limit(variant)" @input="setQuantity(variant, ($event.target as HTMLInputElement).value)" @focus="($event.target as HTMLInputElement).select()" />
+                <v-btn icon="mdi-plus" size="x-small" variant="flat" color="primary" :disabled="(quantities[variant.id] || 0) >= limit(variant)" @click="step(variant, 1)" />
               </div>
             </div>
           </div>
