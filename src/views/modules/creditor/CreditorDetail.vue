@@ -347,7 +347,7 @@ onMounted(load);
     </v-col>
   </v-row>
 
-  <DeleteDialog v-model="deleteOpen" message="Remove this payment?" hint="What we owe him goes back up, and the cash returns to the counter it came out of. A payment from a closed counter cannot be removed." @confirm="removePay" />
+  <DeleteDialog v-model="deleteOpen" message="Remove this payment?" hint="What we owe him goes back up, and the cash returns to the counter it came out of." @confirm="removePay" />
 
   <RightDrawer ref="payRef" v-model="payOpen" :title="payingId ? 'Change Payment' : 'Pay Him'" icon="mdi-cash-fast"
     :subtitle="creditor ? `${creditor.name} · ${creditor.balance > 0 ? `we owe ${formatMoney(creditor.balance)}` : `advance ${formatMoney(creditor.advance)}`}` : ''"

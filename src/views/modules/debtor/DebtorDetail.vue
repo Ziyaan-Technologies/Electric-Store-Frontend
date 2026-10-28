@@ -242,7 +242,7 @@ onMounted(load);
     </v-col>
   </v-row>
 
-  <DeleteDialog v-model="deleteOpen" message="Remove this payment?" hint="The money goes back onto his khata. A payment from a counter that is already closed cannot be removed." @confirm="removePay" />
+  <DeleteDialog v-model="deleteOpen" message="Remove this payment?" hint="The money goes back onto his khata." @confirm="removePay" />
 
   <RightDrawer ref="payRef" v-model="payOpen" :title="payingId ? 'Change Payment' : 'Receive Payment'" icon="mdi-cash-check"
     :subtitle="debtor ? `${debtor.name} · ${debtor.balance > 0 ? `owes ${formatMoney(debtor.balance)}` : `advance ${formatMoney(debtor.advance)}`}` : ''" :submit-label="payingId ? 'Save Changes' : 'Save Payment'" :loading="paying"

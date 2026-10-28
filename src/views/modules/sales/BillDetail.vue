@@ -7,6 +7,7 @@ import StatusChip from '@/components/shared/StatusChip.vue';
 import PrintDialog from '@/components/shared/PrintDialog.vue';
 import ReturnDialog from './ReturnDialog.vue';
 import RightDrawer from '@/components/shared/RightDrawer.vue';
+import DeleteDialog from '@/components/shared/DeleteDialog.vue';
 import { useAlerts } from '@/composables/useAlerts';
 import { can } from '@/utils/permissions';
 import { discountLabel } from '@/utils/bill';
@@ -25,6 +26,8 @@ const payRef = ref<any>(null);
 const paying = ref(false);
 const payForm = ref<any>({ amount: '', method: 'Cash', note: '' });
 const payAlerts = useAlerts();
+const deleteOpen = ref(false);
+const deletePayment = ref<any>(null);
 const khataOpen = ref(false);
 const khataRef = ref<any>(null);
 const khataSaving = ref(false);
@@ -37,6 +40,20 @@ function openPay() {
   payAlerts.clear();
   payOpen.value = true;
   payRef.value?.resetValidation();
+}
+
+function askRemovePayment(payment: any) {
+  deletePayment.value = payment;
+  deleteOpen.value = true;
+}
+
+async function removePayment() {
+  try {
+    sale.value = (await axios.delete(`sales/${route.params.id}/payments/${deletePayment.value.id}`)).data;
+    alerts.success(`Payment removed · ${formatMoney(sale.value.payment.owing)} still owing`);
+  } catch (error) {
+    alerts.fail(error);
+  }
 }
 
 async function pay() {
@@ -214,7 +231,10 @@ onMounted(load);
             <div><span>At the counter{{ sale.payments.length ? ` · ${formatDateTime(sale.created_at)}` : '' }}</span><span>{{ formatMoney(sale.paid_amount) }}</span></div>
             <div v-for="payment in [...sale.payments].reverse()" :key="payment.id">
               <span>{{ formatDateTime(payment.created_at) }} · {{ payment.method }}<template v-if="payment.received_by"> · {{ payment.received_by.full_name }}</template></span>
-              <span>{{ formatMoney(payment.amount) }}</span>
+              <span class="d-inline-flex align-center ga-1">
+                {{ formatMoney(payment.amount) }}
+                <v-btn v-if="can('sales_payment', 'Sales')" icon="mdi-delete-outline" size="x-small" variant="text" color="error" title="Remove payment" @click="askRemovePayment(payment)" />
+              </span>
             </div>
             <div class="font-weight-bold"><span>Paid so far</span><span class="text-successdark">{{ formatMoney(sale.payment?.settled ?? sale.paid_amount) }}</span></div>
             <div v-if="sale.khata_amount > 0" class="font-weight-bold">
@@ -287,6 +307,7 @@ onMounted(load);
   </RightDrawer>
 
   <ReturnDialog v-model="returnOpen" :sale-id="sale?.id || null" @returned="onReturned" />
+  <DeleteDialog v-model="deleteOpen" :message="`Remove this payment of ${formatMoney(deletePayment?.amount || 0)}?`" hint="The amount goes back onto the bill as still owing." @confirm="removePayment" />
 </template>
 
 <style scoped>
